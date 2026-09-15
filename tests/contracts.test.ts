@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
 import {readdirSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import test from 'node:test';
@@ -24,6 +23,7 @@ import {
   type ApiRequest,
   type ApiResponse,
 } from '../apps/web/src/api/generated.js';
+import {openApiSourceHash} from '../scripts/openapi-source-hash.js';
 
 type ContractSchema = Record<string, unknown>;
 
@@ -172,7 +172,7 @@ test('任务状态和输入意图与三代计划一致', async () => {
 test('生成的前端客户端与冻结 OpenAPI 快照一致', () => {
   const projectRoot = resolve(import.meta.dirname, '..');
   const snapshot = readFileSync(resolve(projectRoot, 'docs/api/openapi-v1.0.3.json'));
-  const expectedHash = createHash('sha256').update(snapshot).digest('hex');
+  const expectedHash = openApiSourceHash(snapshot);
 
   assert.equal(OPENAPI_SOURCE_SHA256, expectedHash);
   assert.equal(Object.keys(API_OPERATIONS).length, 81);

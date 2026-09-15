@@ -1,6 +1,6 @@
 {
   "name": "campus-secretary-mvp",
-  "version": "3.0.0-dev.2",
+  "version": "3.0.0-dev.2.1",
   "main": "desktop/main.cjs",
   "private": true,
   "type": "module",

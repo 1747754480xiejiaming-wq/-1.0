@@ -1,6 +1,6 @@
-import {createHash} from 'node:crypto';
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, relative, resolve} from 'node:path';
+import {openApiSourceHash} from './openapi-source-hash.js';
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 const SNAPSHOT_PATH = 'docs/api/openapi-v1.0.3.json';
@@ -148,7 +148,7 @@ function main(): void {
   const outputPath = resolve(projectRoot, OUTPUT_PATH);
   const snapshot = readFileSync(snapshotPath);
   const document = JSON.parse(snapshot.toString('utf8')) as OpenApiDocument;
-  const source = generatedSource(createHash('sha256').update(snapshot).digest('hex'), collectOperations(document));
+  const source = generatedSource(openApiSourceHash(snapshot), collectOperations(document));
 
   if (process.argv.includes('--check')) {
     if (!existsSync(outputPath) || readFileSync(outputPath, 'utf8') !== source) {
