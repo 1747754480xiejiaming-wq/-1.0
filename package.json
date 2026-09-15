@@ -1,6 +1,6 @@
 {
   "name": "campus-secretary-mvp",
-  "version": "3.0.0-dev.1",
+  "version": "3.0.0-dev.2",
   "main": "desktop/main.cjs",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "start:web": "node scripts/serve-web.mjs",
     "start:bot": "npm run start -w @campus/qq-bot",
     "build": "npm run build -w @campus/api && npm run build -w @campus/qq-bot && npm run build -w @campus/web",
-    "typecheck": "tsc --noEmit && npm run typecheck -w @campus/web",
+    "typecheck": "npm run api:check && tsc --noEmit && npm run typecheck -w @campus/web",
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
     "setup": "tsx apps/api/src/cli.ts setup",
@@ -38,7 +38,9 @@
     "desktop:installer": "npm run build && npm run desktop:runtime && electron-builder --win nsis --x64",
     "desktop:package:api-ready": "node scripts/package-api-ready-installer.mjs",
     "test:load": "node scripts/run-load-tests.mjs",
-    "api:export": "tsx scripts/export-openapi.ts"
+    "api:export": "tsx scripts/export-openapi.ts",
+    "api:generate": "tsx scripts/generate-api-client.ts",
+    "api:check": "tsx scripts/generate-api-client.ts --check"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
