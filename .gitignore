@@ -10,11 +10,18 @@ data/
 .local/
 backups/
 release/
-qa/
 tmp/
 test-results/
 playwright-report/
 docs/test-results/
+work/
+docs/rendered/
+qa/load-*/
+qa/migration-run/
+qa/latest-load-report.json
+logs/*.jsonl
+logs/*.log
+logs/*.txt
 
 desktop/runtime/
 *.exe

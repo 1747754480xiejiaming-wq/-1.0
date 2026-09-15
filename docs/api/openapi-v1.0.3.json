@@ -1,0 +1,3017 @@
+{
+  "components": {
+    "schemas": {}
+  },
+  "info": {
+    "title": "校园教务小助手 API",
+    "version": "1.0.3"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/api/v1/admin/account": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "账户"
+        ]
+      }
+    },
+    "/api/v1/admin/account/upgrade": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "key": {
+                    "maxLength": 128,
+                    "minLength": 8,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "账户"
+        ]
+      }
+    },
+    "/api/v1/admin/answer/test": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "images": {
+                    "items": {
+                      "maxLength": 2800000,
+                      "minLength": 8,
+                      "type": "string"
+                    },
+                    "maxItems": 3,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "qqSender": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "chatKind": {
+                        "enum": [
+                          "c2c",
+                          "group"
+                        ]
+                      },
+                      "id": {
+                        "maxLength": 160,
+                        "minLength": 6,
+                        "pattern": "^[A-Za-z0-9_-]+$",
+                        "type": "string"
+                      },
+                      "messageId": {
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F]+$",
+                        "type": "string"
+                      },
+                      "name": {
+                        "maxLength": 80,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "qqNumber": {
+                        "pattern": "^[1-9][0-9]{4,11}$",
+                        "type": "string"
+                      },
+                      "targetId": {
+                        "maxLength": 160,
+                        "minLength": 6,
+                        "pattern": "^[A-Za-z0-9_-]+$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ],
+                    "type": "object"
+                  },
+                  "question": {
+                    "maxLength": 200,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "requestId": {
+                    "maxLength": 100,
+                    "minLength": 8,
+                    "pattern": "^[a-zA-Z0-9_-]{8,100}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "question",
+                  "requestId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "answer": {
+                      "type": "string"
+                    },
+                    "attachments": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "createdAt": {
+                            "type": "integer"
+                          },
+                          "faqId": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "enum": [
+                              "folder",
+                              "image",
+                              "pdf",
+                              "word",
+                              "excel",
+                              "video"
+                            ]
+                          },
+                          "mime": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kind",
+                          "mime",
+                          "size",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fallbackReason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "faqId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "faqVersion": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "isDemo": {
+                      "type": "boolean"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "enum": [
+                        "faq_keyword",
+                        "faq_semantic",
+                        "forbidden_keyword",
+                        "forbidden_semantic",
+                        "rag",
+                        "fallback"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "requestId",
+                    "answer",
+                    "faqId",
+                    "faqVersion",
+                    "source",
+                    "fallbackReason",
+                    "isDemo"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "模型"
+        ]
+      }
+    },
+    "/api/v1/admin/bot/config": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "appId": {
+                    "pattern": "^\\d{5,20}$",
+                    "type": "string"
+                  },
+                  "appSecret": {
+                    "maxLength": 200,
+                    "minLength": 0,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "appId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ"
+        ]
+      }
+    },
+    "/api/v1/admin/bot/start": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ"
+        ]
+      }
+    },
+    "/api/v1/admin/bot/stop": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ"
+        ]
+      }
+    },
+    "/api/v1/admin/developer/access": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "认证"
+        ]
+      }
+    },
+    "/api/v1/admin/developer/unlock": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "key": {
+                    "maxLength": 128,
+                    "minLength": 8,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "认证"
+        ]
+      }
+    },
+    "/api/v1/admin/materials": {
+      "delete": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "ids": {
+                    "items": {
+                      "maxLength": 100,
+                      "minLength": 8,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pending_confirm",
+                "pending_archive",
+                "archived"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "categoryId",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      }
+    },
+    "/api/v1/admin/materials/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "categoryId": {
+                    "anyOf": [
+                      {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "categoryId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      }
+    },
+    "/api/v1/admin/materials/{id}/download": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      }
+    },
+    "/api/v1/admin/materials/categories": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 60,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      }
+    },
+    "/api/v1/admin/materials/categories/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 60,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      }
+    },
+    "/api/v1/admin/materials/download.zip": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ids",
+            "required": true,
+            "schema": {
+              "maxLength": 10000,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "资料整理"
+        ]
+      }
+    },
+    "/api/v1/admin/models": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "模型"
+        ]
+      }
+    },
+    "/api/v1/admin/models/{provider}/connect": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "zhipu"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "apiKey": {
+                    "maxLength": 512,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "模型"
+        ]
+      }
+    },
+    "/api/v1/admin/models/{provider}/disconnect": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "zhipu"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "模型"
+        ]
+      }
+    },
+    "/api/v1/admin/models/select": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "provider": {
+                    "enum": [
+                      "deepseek",
+                      "zhipu"
+                    ]
+                  }
+                },
+                "required": [
+                  "provider"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "模型"
+        ]
+      }
+    },
+    "/api/v1/admin/notifications": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ 通知"
+        ]
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ 通知"
+        ]
+      }
+    },
+    "/api/v1/admin/notifications/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ 通知"
+        ]
+      }
+    },
+    "/api/v1/admin/qq/groups": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ 通知"
+        ]
+      }
+    },
+    "/api/v1/admin/qq/groups/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ 通知"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "groupNumber": {
+                    "maxLength": 15,
+                    "pattern": "^([1-9][0-9]{4,14})?$",
+                    "type": "string"
+                  },
+                  "label": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "label",
+                  "enabled"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ 通知"
+        ]
+      }
+    },
+    "/api/v1/admin/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "开发管理系统"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "password": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "username": {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "认证"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "认证"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "password": {
+                    "maxLength": 128,
+                    "minLength": 12,
+                    "type": "string"
+                  },
+                  "registrationCode": {
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "username": {
+                    "maxLength": 40,
+                    "minLength": 2,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username",
+                  "password",
+                  "registrationCode"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "认证"
+        ]
+      }
+    },
+    "/api/v1/auth/session": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "认证"
+        ]
+      }
+    },
+    "/api/v1/developer/accounts": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "账户管理"
+        ]
+      }
+    },
+    "/api/v1/developer/accounts/{id}/reset-password": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "password": {
+                    "maxLength": 128,
+                    "minLength": 12,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "password"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "账户管理"
+        ]
+      }
+    },
+    "/api/v1/faqs": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "maxLength": 20,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "maxLength": 40,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "libraryType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "answer",
+                "forbidden"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unmatchedType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "manual",
+                "unrelated",
+                "offline"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "answer": {
+                    "maxLength": 1500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "category": {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "confirmed": {
+                    "type": "boolean"
+                  },
+                  "keywords": {
+                    "items": {
+                      "maxLength": 40,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "libraryType": {
+                    "enum": [
+                      "answer",
+                      "forbidden"
+                    ],
+                    "type": "string"
+                  },
+                  "question": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "active",
+                      "disabled"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "question",
+                  "answer",
+                  "keywords",
+                  "category",
+                  "status",
+                  "confirmed"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "version": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "answer": {
+                    "maxLength": 1500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "category": {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "confirmed": {
+                    "type": "boolean"
+                  },
+                  "keywords": {
+                    "items": {
+                      "maxLength": 40,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "libraryType": {
+                    "enum": [
+                      "answer",
+                      "forbidden"
+                    ],
+                    "type": "string"
+                  },
+                  "question": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "active",
+                      "disabled"
+                    ],
+                    "type": "string"
+                  },
+                  "version": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "question",
+                  "answer",
+                  "keywords",
+                  "category",
+                  "status",
+                  "confirmed",
+                  "version"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/{id}/attachments": {
+      "post": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "folder"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "folderName",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ 附件"
+        ]
+      }
+    },
+    "/api/v1/faqs/{id}/attachments/{attachmentId}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ 附件"
+        ]
+      }
+    },
+    "/api/v1/faqs/{id}/attachments/{attachmentId}/download": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ 附件"
+        ]
+      }
+    },
+    "/api/v1/faqs/abuse-lexicon/import": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/batch": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "update",
+                      "delete"
+                    ]
+                  },
+                  "category": {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "ids": {
+                    "items": {
+                      "maxLength": 100,
+                      "minLength": 8,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "libraryType": {
+                    "enum": [
+                      "answer",
+                      "forbidden"
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "active",
+                      "disabled"
+                    ]
+                  }
+                },
+                "required": [
+                  "ids",
+                  "libraryType",
+                  "action"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/export": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "libraryType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "answer",
+                "forbidden"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/export-package.zip": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "libraryType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "answer",
+                "forbidden"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/export.xlsx": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "libraryType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "answer",
+                "forbidden"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/import": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "items": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "answer": {
+                          "maxLength": 1500,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "category": {
+                          "maxLength": 40,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "confirmed": {
+                          "type": "boolean"
+                        },
+                        "id": {
+                          "maxLength": 100,
+                          "type": "string"
+                        },
+                        "keywords": {
+                          "items": {
+                            "maxLength": 40,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "maxItems": 20,
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "libraryType": {
+                          "enum": [
+                            "answer",
+                            "forbidden"
+                          ],
+                          "type": "string"
+                        },
+                        "question": {
+                          "maxLength": 200,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "status": {
+                          "enum": [
+                            "active",
+                            "disabled"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "question",
+                        "answer",
+                        "keywords",
+                        "category",
+                        "status",
+                        "confirmed"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 1000,
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "items"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/import.xlsx": {
+      "post": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "libraryType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "answer",
+                "forbidden"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/faqs/optimize-answer": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "answer": {
+                    "maxLength": 1500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "question": {
+                    "maxLength": 200,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "question",
+                  "answer"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "FAQ"
+        ]
+      }
+    },
+    "/api/v1/health/live": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/qq/answer": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "images": {
+                    "items": {
+                      "maxLength": 2800000,
+                      "minLength": 8,
+                      "type": "string"
+                    },
+                    "maxItems": 3,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "qqSender": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "chatKind": {
+                        "enum": [
+                          "c2c",
+                          "group"
+                        ]
+                      },
+                      "id": {
+                        "maxLength": 160,
+                        "minLength": 6,
+                        "pattern": "^[A-Za-z0-9_-]+$",
+                        "type": "string"
+                      },
+                      "messageId": {
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F]+$",
+                        "type": "string"
+                      },
+                      "name": {
+                        "maxLength": 80,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "qqNumber": {
+                        "pattern": "^[1-9][0-9]{4,11}$",
+                        "type": "string"
+                      },
+                      "targetId": {
+                        "maxLength": 160,
+                        "minLength": 6,
+                        "pattern": "^[A-Za-z0-9_-]+$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ],
+                    "type": "object"
+                  },
+                  "question": {
+                    "maxLength": 200,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "requestId": {
+                    "maxLength": 100,
+                    "minLength": 8,
+                    "pattern": "^[a-zA-Z0-9_-]{8,100}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "question",
+                  "requestId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "answer": {
+                      "type": "string"
+                    },
+                    "attachments": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "createdAt": {
+                            "type": "integer"
+                          },
+                          "faqId": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "enum": [
+                              "folder",
+                              "image",
+                              "pdf",
+                              "word",
+                              "excel",
+                              "video"
+                            ]
+                          },
+                          "mime": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kind",
+                          "mime",
+                          "size",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fallbackReason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "faqId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "faqVersion": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "isDemo": {
+                      "type": "boolean"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "enum": [
+                        "faq_keyword",
+                        "faq_semantic",
+                        "forbidden_keyword",
+                        "forbidden_semantic",
+                        "rag",
+                        "fallback"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "requestId",
+                    "answer",
+                    "faqId",
+                    "faqVersion",
+                    "source",
+                    "fallbackReason",
+                    "isDemo"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "QQ"
+        ]
+      }
+    },
+    "/api/v1/knowledge/categories": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "libraryType",
+            "required": true,
+            "schema": {
+              "enum": [
+                "answer",
+                "forbidden"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "libraryType": {
+                    "enum": [
+                      "answer",
+                      "forbidden"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "libraryType"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库"
+        ]
+      }
+    },
+    "/api/v1/knowledge/categories/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库"
+        ]
+      }
+    },
+    "/api/v1/rag/documents": {
+      "post": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "folderId",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/documents/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/documents/{id}/chunks": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/documents/{id}/graph": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/documents/{id}/reparse": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/evaluate": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "cases": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "expectedAnswer": {
+                          "maxLength": 1500,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "question": {
+                          "maxLength": 200,
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "question",
+                        "expectedAnswer"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 50,
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "cases"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/export-package.zip": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/export.xlsx": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/folders": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "parentId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/folders/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/models": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "embedding",
+                "rerank"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/search": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "question": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "topK": {
+                    "maximum": 20,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "question"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/settings": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      },
+      "patch": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "chunkOverlap": {
+                    "maximum": 1000,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "chunkSize": {
+                    "maximum": 2400,
+                    "minimum": 200,
+                    "type": "integer"
+                  },
+                  "embeddingModel": {
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "parserMode": {
+                    "enum": [
+                      "local",
+                      "model"
+                    ]
+                  },
+                  "rerankModel": {
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "topK": {
+                    "maximum": 20,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "embeddingModel",
+                  "rerankModel",
+                  "parserMode",
+                  "chunkSize",
+                  "chunkOverlap",
+                  "topK"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/rag/tree": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "知识库技能"
+        ]
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/api/v1/unmatched": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "maxLength": 20,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "maxLength": 40,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "libraryType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "answer",
+                "forbidden"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unmatchedType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "manual",
+                "unrelated",
+                "offline"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "未命中"
+        ]
+      }
+    },
+    "/api/v1/unmatched/{id}/qq-students/{senderId}": {
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "senderId",
+            "required": true,
+            "schema": {
+              "maxLength": 160,
+              "minLength": 6,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "qqNumber": {
+                    "pattern": "^[1-9][0-9]{4,11}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "qqNumber"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "未命中"
+        ]
+      }
+    },
+    "/api/v1/unmatched/{id}/resolve": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "create",
+                      "link",
+                      "ignore"
+                    ]
+                  },
+                  "faq": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "answer": {
+                        "maxLength": 1500,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "category": {
+                        "maxLength": 40,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "confirmed": {
+                        "type": "boolean"
+                      },
+                      "keywords": {
+                        "items": {
+                          "maxLength": 40,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "maxItems": 20,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "libraryType": {
+                        "enum": [
+                          "answer",
+                          "forbidden"
+                        ],
+                        "type": "string"
+                      },
+                      "question": {
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "status": {
+                        "enum": [
+                          "active",
+                          "disabled"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "question",
+                      "answer",
+                      "keywords",
+                      "category",
+                      "status",
+                      "confirmed"
+                    ],
+                    "type": "object"
+                  },
+                  "faqId": {
+                    "maxLength": 100,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "未命中"
+        ]
+      }
+    },
+    "/api/v1/unmatched/batch": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "ignore",
+                      "delete"
+                    ]
+                  },
+                  "ids": {
+                    "items": {
+                      "maxLength": 100,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "ids",
+                  "action"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "未命中"
+        ]
+      }
+    },
+    "/api/v1/unmatched/preferences": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "未命中"
+        ]
+      },
+      "patch": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "offlineAutoReply": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "offlineAutoReply"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "tags": [
+          "未命中"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-runtime-route-count": 96,
+  "x-runtime-route-tree": "├── /api/v1/health/live (GET, HEAD)\n├── /api/v1/health/ready (GET, HEAD)\n├── /api/v1/status (GET, HEAD)\n├── /api/v1/auth/login (POST)\n├── /api/v1/auth/logout (POST)\n├── /api/v1/auth/register (POST)\n├── /api/v1/auth/session (GET, HEAD)\n├── /api/v1/admin/developer/access (GET, HEAD)\n├── /api/v1/admin/developer/unlock (POST)\n├── /api/v1/admin/account (GET, HEAD)\n│   └── /upgrade (POST)\n├── /api/v1/admin/answer/test (POST)\n├── /api/v1/admin/status (GET, HEAD)\n├── /api/v1/admin/bot/config (GET, HEAD, POST)\n├── /api/v1/admin/bot/start (POST)\n├── /api/v1/admin/bot/stop (POST)\n├── /api/v1/admin/qq/groups (GET, HEAD)\n│   └── /:id (PATCH, DELETE)\n├── /api/v1/admin/materials (GET, HEAD, DELETE)\n│   ├── /categories (GET, HEAD, POST)\n│   │   └── /:id (PATCH, DELETE)\n│   ├── /download.zip (GET, HEAD)\n│   └── /:id (PATCH, DELETE)\n│       └── /download (GET, HEAD)\n├── /api/v1/admin/models (GET, HEAD)\n│   ├── /select (POST)\n│   ├── /:provider/connect (POST)\n│   └── /:provider/disconnect (POST)\n├── /api/v1/admin/notifications (GET, HEAD, POST)\n│   └── /:id (DELETE)\n├── /api/v1/admin/openapi (GET, HEAD)\n├── /api/v1/developer/accounts (GET, HEAD)\n│   └── /:id/reset-password (POST)\n├── /api/v1/internal/qq/answer (POST)\n├── /api/v1/internal/qq/attachments/:id (GET, HEAD)\n├── /api/v1/internal/qq/transcribe (POST)\n├── /api/v1/internal/qq/materials (POST)\n├── /api/v1/internal/qq/heartbeat (POST)\n├── /api/v1/internal/qq/offline/preferences (GET, HEAD)\n├── /api/v1/internal/qq/offline/questions (POST)\n│   └── /:id/complete (POST)\n├── /api/v1/internal/qq/groups (POST)\n├── /api/v1/internal/qq/notifications/claim (POST)\n├── /api/v1/internal/qq/notifications/:id/begin (POST)\n├── /api/v1/internal/qq/notifications/:id/result (POST)\n├── /api/v1/internal/qq/unmatched-replies/claim (POST)\n├── /api/v1/internal/qq/unmatched-replies/:id/begin (POST)\n├── /api/v1/internal/qq/unmatched-replies/:id/result (POST)\n├── /api/v1/faqs (GET, HEAD, POST)\n│   ├── /batch (POST)\n│   ├── /abuse-lexicon/import (POST)\n│   ├── /optimize-answer (POST)\n│   ├── /export (GET, HEAD)\n│   │   ├── .xlsx (GET, HEAD)\n│   │   └── -package.zip (GET, HEAD)\n│   ├── /import (POST)\n│   │   └── .xlsx (POST)\n│   └── /:id (PATCH, DELETE)\n│       └── /attachments (POST)\n│           └── /:attachmentId (DELETE)\n│               └── /download (GET, HEAD)\n├── /api/v1/knowledge/categories (GET, HEAD, POST)\n│   └── /:id (PATCH, DELETE)\n├── /api/v1/rag/tree (GET, HEAD)\n├── /api/v1/rag/folders (POST)\n│   └── /:id (PATCH, DELETE)\n├── /api/v1/rag/documents (POST)\n│   └── /:id (DELETE)\n│       ├── /reparse (POST)\n│       ├── /chunks (GET, HEAD)\n│       └── /graph (GET, HEAD)\n├── /api/v1/rag/export.xlsx (GET, HEAD)\n├── /api/v1/rag/export-package.zip (GET, HEAD)\n├── /api/v1/rag/evaluate (POST)\n├── /api/v1/rag/settings (GET, HEAD, PATCH)\n├── /api/v1/rag/search (POST)\n├── /api/v1/rag/models (GET, HEAD)\n├── /api/v1/unmatched (GET, HEAD)\n│   ├── /preferences (GET, HEAD, PATCH)\n│   ├── /batch (POST)\n│   ├── /:id/qq-students/:senderId (PATCH)\n│   └── /:id/resolve (POST)\n└── * (OPTIONS)\n"
+}

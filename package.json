@@ -1,6 +1,6 @@
 {
   "name": "campus-secretary-mvp",
-  "version": "1.0.3",
+  "version": "3.0.0-dev.1",
   "main": "desktop/main.cjs",
   "private": true,
   "type": "module",
@@ -37,7 +37,8 @@
     "desktop:package": "npm run build && npm run desktop:runtime && electron-builder --win portable --x64",
     "desktop:installer": "npm run build && npm run desktop:runtime && electron-builder --win nsis --x64",
     "desktop:package:api-ready": "node scripts/package-api-ready-installer.mjs",
-    "test:load": "node scripts/run-load-tests.mjs"
+    "test:load": "node scripts/run-load-tests.mjs",
+    "api:export": "tsx scripts/export-openapi.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
