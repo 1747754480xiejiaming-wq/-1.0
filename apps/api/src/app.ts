@@ -36,6 +36,7 @@ export async function createApp(overrides:Partial<Config>={},dependencies:Create
   const app=Fastify({bodyLimit:32768,logger:config.logger,logController:new LogController({disableRequestLogging:true}),genReqId:()=>randomUUID(),trustProxy:['127.0.0.1','::1'],ajv:{customOptions:{removeAdditional:false,coerceTypes:'array',allErrors:false}}});
   app.decorateRequest('campusSession',undefined);
   app.decorateRequest('campusContext',undefined);
+  app.addHook('onRequest',async req=>{req.campusContext={user:null,role:null,workspaceId:null,csrfToken:null,correlationId:req.id};});
   await app.register(cookie);
   await app.register(multipart,{limits:{files:200,fileSize:25*1024*1024,parts:220},preservePath:true});
   await app.register(cors,{origin:(origin,cb)=>cb(null,!origin||config.origins.includes(origin)),credentials:true,methods:['GET','POST','PATCH','DELETE','OPTIONS'],allowedHeaders:['Content-Type','X-CSRF-Token','Authorization']});

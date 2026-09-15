@@ -12,10 +12,6 @@ export function createGuards(context: RouteContext) {
     }
   }
 
-  async function publicRoute(req: FastifyRequest) {
-    req.campusContext = {user:null,role:null,workspaceId:null,csrfToken:null,correlationId:req.id};
-  }
-
   async function session(req: FastifyRequest) {
     const token = req.cookies.campus_session;
     const found = token ? store.getSession(token) : undefined;
@@ -72,7 +68,6 @@ export function createGuards(context: RouteContext) {
   }
 
   return {
-    publicRoute,
     session,
     teacher,
     teacherWrite,
