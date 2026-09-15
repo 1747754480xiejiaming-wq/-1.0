@@ -1,0 +1,33 @@
+{
+  "name": "@campus/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@campus/contracts": "1.0.0",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/multipart": "^10.1.1",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/swagger": "^9.6.1",
+    "@langchain/classic": "^1.0.47",
+    "@langchain/core": "^1.2.10",
+    "@napi-rs/canvas": "^1.0.8",
+    "archiver": "^8.0.0",
+    "better-sqlite3": "^13.0.3",
+    "cfb": "^1.2.2",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "0.45.2",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.12.1",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.2",
+    "pdfjs-dist": "^6.3.289"
+  }
+}

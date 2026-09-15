@@ -1,0 +1,7 @@
+import { createApp } from '../apps/api/src/app.js';
+import { randomUUID } from 'node:crypto';
+import { mkdirSync,writeFileSync } from 'node:fs';
+const {app,store}=await createApp({dbPath:':memory:',logger:false,modelKey:'',rateLimit:10000,botToken:'benchmark-only-token'});store.seedDemo();await app.listen({host:'127.0.0.1',port:0});const address=app.server.address();if(!address||typeof address==='string')throw new Error('No address');const url=`http://127.0.0.1:${address.port}/api/v1/internal/qq/answer`;
+const times:number[]=[];let errors=0;
+for(let batch=0;batch<10;batch++)await Promise.all(Array.from({length:10},async()=>{const start=performance.now();const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer benchmark-only-token'},body:JSON.stringify({question:'如何申请缓考？',requestId:randomUUID()})});const data=await response.json() as {faqId?:string};if(!response.ok||data.faqId!=='exam-deferral')errors++;times.push(performance.now()-start);}));
+times.sort((a,b)=>a-b);const report={recordedAt:new Date().toISOString(),scope:'本机 HTTP，SQLite 内存库，20 条演示 FAQ，关键词路径；不代表真实模型性能',node:process.version,requests:times.length,concurrency:10,errors,p50Ms:Number(times[Math.floor(times.length*.5)].toFixed(2)),p95Ms:Number(times[Math.floor(times.length*.95)].toFixed(2)),maxMs:Number(times.at(-1)!.toFixed(2))};mkdirSync('qa',{recursive:true});writeFileSync('qa/performance.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));await app.close();

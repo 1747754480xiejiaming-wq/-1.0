@@ -1,0 +1,14 @@
+import { useEffect,useState } from 'react';
+import { Button,Dialog,DialogActions,DialogBody,DialogContent,DialogSurface,DialogTitle,Field,Input,Spinner } from '@fluentui/react-components';
+import { Key,UsersThree } from '@phosphor-icons/react';
+import type { RegisteredAccount } from '@campus/contracts';
+import { api,messageOf } from '../api';
+import { Empty,Notice } from '../ui';
+
+export function DeveloperAccounts(){
+  const [items,setItems]=useState<RegisteredAccount[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[selected,setSelected]=useState<RegisteredAccount|null>(null),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
+  const load=()=>{setLoading(true);setError('');api<{items:RegisteredAccount[]}>('/developer/accounts').then(data=>setItems(data.items)).catch(error=>setError(messageOf(error))).finally(()=>setLoading(false));};
+  useEffect(load,[]);
+  async function reset(){if(!selected)return;setBusy(true);setError('');try{await api(`/developer/accounts/${selected.id}/reset-password`,{method:'POST',body:{password}});setSelected(null);setPassword('');setNotice(`已重置账号“${selected.username}”的口令，旧会话已退出。`);}catch(error){setError(messageOf(error));}finally{setBusy(false);}}
+  return <div className="admin-page developer-accounts"><div className="page-heading"><div><h1>账号管理</h1></div></div>{notice&&<Notice>{notice}</Notice>}{error&&<Notice>{error}</Notice>}<section className="panel table-panel"><div className="panel-title account-management-title"><div><h2>已注册账号</h2></div><UsersThree size={22}/></div>{loading?<div className="loading"><Spinner label="正在读取账号"/></div>:!items.length?<Empty title="暂无普通账号" description="老师可在登录页使用注册码注册。"/>:<div className="table-scroll"><table className="data-table"><thead><tr><th>账号名称</th><th>注册时间</th><th className="table-action">操作</th></tr></thead><tbody>{items.map(item=><tr key={item.id}><td><strong>{item.username}</strong></td><td className="date-cell">{new Date(item.createdAt).toLocaleString('zh-CN')}</td><td><Button appearance="subtle" icon={<Key/>} onClick={()=>{setSelected(item);setPassword('');setError('');}}>重置口令</Button></td></tr>)}</tbody></table></div>}</section><Dialog open={!!selected} onOpenChange={(_,data)=>!data.open&&setSelected(null)}><DialogSurface><DialogBody><DialogTitle>重置账号口令</DialogTitle><DialogContent><p>账号：{selected?.username}</p><Field label="新口令" hint="至少 12 个字符" required><Input type="password" autoComplete="new-password" value={password} maxLength={128} onChange={(_,data)=>setPassword(data.value)}/></Field></DialogContent><DialogActions><Button appearance="secondary" onClick={()=>setSelected(null)}>取消</Button><Button appearance="primary" disabled={busy||password.length<12} icon={busy?<Spinner size="tiny"/>:<Key/>} onClick={()=>void reset()}>确认重置</Button></DialogActions></DialogBody></DialogSurface></Dialog></div>;
+}

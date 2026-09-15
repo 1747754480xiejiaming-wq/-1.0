@@ -1,0 +1,27 @@
+import {test,expect} from '@playwright/test';
+test('服务状态自动更新；通知下拉多选、旧群禁选和独立历史滚动',async({page})=>{
+  await page.setExtraHTTPHeaders({'X-Forwarded-For':'127.0.0.53'});
+  let started=false;
+  await page.route('**/api/v1/admin/status',async route=>{const response=await route.fetch(),data=await response.json();if(!response.ok()){await route.fulfill({response});return;}await route.fulfill({json:{...data,botState:'connected',botProcessRunning:true,qqAnswerEnabled:started}});});
+  await page.route('**/api/v1/admin/models',async route=>{const response=await route.fetch(),data=await response.json();if(!response.ok()){await route.fulfill({response});return;}await route.fulfill({json:{...data,providers:data.providers.map((provider:any)=>({...provider,connected:started}))}});});
+  await page.goto('/login');await page.getByLabel('账号').fill('e2e-teacher');await page.getByLabel('口令').fill('test-only-password-123');await page.getByRole('button',{name:'进入工作台'}).click();
+  await expect(page.getByRole('heading',{name:'工作概览'})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight)).toBeTruthy();
+  await page.getByRole('button',{name:'设置',exact:true}).click();const sidebar=page.getByRole('region',{name:'服务连接'});await expect(sidebar.getByText('未启动',{exact:true})).toHaveCount(0);
+  started=true;await expect(sidebar.getByRole('switch',{name:'QQ机器人开关'})).toBeChecked({timeout:12000});await expect(page.getByRole('region',{name:'回答模型选择'}).getByRole('radio')).toHaveCount(2);await page.keyboard.press('Escape');
+  await expect(page.locator('.dashboard-grid .pending-panel')).toBeVisible();await expect(page.locator('.connection-panel')).toHaveCount(0);
+  await page.screenshot({path:'qa/screenshots/workspace-overview-v2.png',fullPage:true});
+  const groups=[{id:'one',label:'材料学院2026级工作群',groupNumber:'1234567890',nameSynced:true,available:true,enabled:true,firstSeen:Date.now(),lastSeen:Date.now()},{id:'two',label:'环境学院2026级工作群',groupNumber:'1234567891',nameSynced:true,available:true,enabled:true,firstSeen:Date.now(),lastSeen:Date.now()},{id:'old',label:'旧机器人工作群',groupNumber:null,nameSynced:true,available:false,enabled:true,firstSeen:Date.now(),lastSeen:Date.now()}];
+  await page.route('**/api/v1/admin/qq/groups',route=>route.fulfill({json:{items:groups}}));
+  const records=Array.from({length:12},(_,i)=>({id:'test-'+i,title:'教务通知 '+(i+1),content:'请同学们核对个人课表，及时完成选课。',createdAt:Date.now()-i*3600000,targetCount:1,pendingCount:0,sentCount:1,failedCount:0,targets:[{id:'target-'+i,groupId:'one',groupLabel:groups[0].label,status:'sent',attempts:1,sentAt:Date.now(),lastError:null,messageId:'test-receipt-'+i}]}));
+  await page.route('**/api/v1/admin/notifications?**',route=>route.fulfill({json:{items:records}}));
+  await page.goto('/admin/notifications');await page.getByRole('combobox',{name:'选择通知群聊'}).click();
+  await expect(page.getByRole('menuitemcheckbox',{name:/旧机器人工作群/})).toBeDisabled();await page.getByRole('menuitemcheckbox',{name:/材料学院2026级工作群/}).click();await page.getByRole('menuitemcheckbox',{name:/环境学院2026级工作群/}).click();
+  await page.screenshot({path:'qa/screenshots/group-dropdown-v2.png',fullPage:true});await page.keyboard.press('Escape');
+  await expect(page.getByLabel('已选通知群聊')).toContainText('1234567890');expect(await page.locator('body').innerText()).not.toContain('尾号');
+  const area=page.getByRole('region',{name:'发送记录滚动区域'});expect(await area.evaluate(element=>element.scrollHeight>element.clientHeight)).toBeTruthy();
+  await area.scrollIntoViewIfNeeded();const y=await page.evaluate(()=>window.scrollY);await area.hover();await page.mouse.wheel(0,360);await expect.poll(()=>area.evaluate(element=>element.scrollTop)).toBeGreaterThan(0);expect(await page.evaluate(()=>window.scrollY)).toBe(y);
+  const groupBox=await page.getByRole('region',{name:'通知群聊',exact:true}).boundingBox(),historyBox=await page.getByRole('region',{name:'发送记录',exact:true}).boundingBox();expect(historyBox!.y).toBeGreaterThan(groupBox!.y+groupBox!.height);
+  await page.screenshot({path:'qa/screenshots/notification-layout-v2.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+});

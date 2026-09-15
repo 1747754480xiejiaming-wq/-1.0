@@ -1,0 +1,11 @@
+[
+  {
+    "id": "school-confirmed-example",
+    "question": "这里填写学生会问的标准问题",
+    "answer": "这里填写老师核实后的办理流程、正式入口和负责部门。不要填写个人信息。",
+    "keywords": ["具体事项关键词", "常见的另一种问法"],
+    "category": "校园服务",
+    "status": "disabled",
+    "confirmed": false
+  }
+]

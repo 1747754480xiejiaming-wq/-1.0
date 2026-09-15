@@ -1,0 +1,134 @@
+{
+  "name": "campus-secretary-mvp",
+  "version": "1.0.3",
+  "main": "desktop/main.cjs",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/stack.mjs --dev",
+    "start": "node scripts/stack.mjs",
+    "start:api": "npm run start -w @campus/api",
+    "start:web": "node scripts/serve-web.mjs",
+    "start:bot": "npm run start -w @campus/qq-bot",
+    "build": "npm run build -w @campus/api && npm run build -w @campus/qq-bot && npm run build -w @campus/web",
+    "typecheck": "tsc --noEmit && npm run typecheck -w @campus/web",
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "setup": "tsx apps/api/src/cli.ts setup",
+    "admin:reset": "tsx apps/api/src/cli.ts admin-reset",
+    "db:backup": "tsx apps/api/src/cli.ts backup",
+    "db:restore": "tsx apps/api/src/cli.ts restore",
+    "faq:import": "tsx apps/api/src/cli.ts import",
+    "faq:export": "tsx apps/api/src/cli.ts export",
+    "benchmark": "tsx scripts/benchmark.ts",
+    "check": "node scripts/check.mjs",
+    "package": "node scripts/package.mjs",
+    "package:launcher": "node scripts/package-launcher.mjs",
+    "desktop:dev": "npm run build && electron .",
+    "desktop:runtime": "node scripts/prepare-desktop-runtime.mjs",
+    "desktop:dir": "npm run build && npm run desktop:runtime && electron-builder --dir --win --x64",
+    "desktop:package": "npm run build && npm run desktop:runtime && electron-builder --win portable --x64",
+    "desktop:installer": "npm run build && npm run desktop:runtime && electron-builder --win nsis --x64",
+    "desktop:package:api-ready": "node scripts/package-api-ready-installer.mjs",
+    "test:load": "node scripts/run-load-tests.mjs"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/multipart": "^10.1.1",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/swagger": "^9.8.1",
+    "@langchain/classic": "^1.0.47",
+    "@langchain/core": "^1.2.10",
+    "@napi-rs/canvas": "^1.0.8",
+    "@tencent-connect/qqbot-nodejs": "^1.0.4",
+    "@tesseract.js-data/chi_sim": "^1.0.0",
+    "archiver": "^8.0.0",
+    "better-sqlite3": "^13.0.3",
+    "cfb": "^1.2.2",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.12.1",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.2",
+    "pdfjs-dist": "^6.3.289",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/archiver": "^8.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.19.19",
+    "electron": "^44.1.1",
+    "electron-builder": "^26.15.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "cn.campus.secretary",
+    "productName": "校园教务小助手",
+    "asar": false,
+    "npmRebuild": false,
+    "directories": {
+      "output": "release/desktop"
+    },
+    "files": [
+      "desktop/main.cjs",
+      "desktop/model-bootstrap.cjs",
+      "desktop/icon.ico",
+      "apps/api/dist/**/*",
+      "apps/qq-bot/dist/**/*",
+      "apps/web/dist/**/*",
+      "migrations/**/*",
+      "scripts/stack.mjs",
+      "scripts/serve-web.mjs",
+      ".env.example",
+      "package.json",
+      "node_modules/**/*",
+      "!node_modules/.cache/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "desktop/runtime/node.exe",
+        "to": "runtime/node.exe"
+      }
+    ],
+    "win": {
+      "icon": "desktop/icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "校园教务小助手-桌面版-${version}.exe",
+      "unpackDirName": true
+    },
+    "nsis": {
+      "artifactName": "校园教务小助手-安装包-${version}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "校园教务小助手",
+      "installerLanguages": ["zh_CN"],
+      "language": "2052"
+    }
+  },
+  "description": "校园教务问答、老师知识维护与多群通知桌面工作台",
+  "author": "Campus Secretary"
+}

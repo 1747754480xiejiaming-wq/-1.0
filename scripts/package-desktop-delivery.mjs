@@ -1,0 +1,15 @@
+import { ZipArchive } from 'archiver';
+import { createHash } from 'node:crypto';
+import { createWriteStream,readFileSync,writeFileSync,statSync } from 'node:fs';
+import { resolve } from 'node:path';
+const version=JSON.parse(readFileSync(resolve('package.json'),'utf8')).version;
+const exeName=`校园教务小助手-桌面版-${version}.exe`,exe=resolve('release/desktop',exeName),hash=createHash('sha256').update(readFileSync(exe)).digest('hex');
+writeFileSync(exe+'.sha256',hash+'  '+exeName+'\n');
+const target=resolve('release/校园教务小助手-桌面交付包.zip'),output=createWriteStream(target),zip=new ZipArchive({zlib:{level:6}}),done=new Promise((resolve,reject)=>{output.on('close',resolve);output.on('error',reject);zip.on('error',reject);});zip.pipe(output);
+zip.file(exe,{name:exeName});zip.file(exe+'.sha256',{name:exeName+'.sha256'});
+for(const file of ['本次工作台更新说明.md','桌面版使用说明.md','模型与周额度使用说明.md','群通知修复说明.md','界面设计说明.md','稳定性测试报告.md','交付验收说明.md'])zip.file(resolve('docs',file),{name:file});
+zip.file(resolve('qa/workspace-v2-validation.json'),{name:'test-results/workspace-v2-validation.json'});
+zip.file(resolve('docs/test-results/k6-results.json'),{name:'test-results/k6-results.json'});zip.file(resolve('qa/desktop-smoke.json'),{name:'test-results/desktop-smoke.json'});
+zip.file(resolve('docs/test-results/qwen-vision-result.json'),{name:'test-results/qwen-vision-result.json'});
+await zip.finalize();await done;writeFileSync(target+'.sha256',createHash('sha256').update(readFileSync(target)).digest('hex')+'  校园教务小助手-桌面交付包.zip\n');
+console.log(JSON.stringify({exe,exeMB:statSync(exe).size/1024**2,zip:target,sha256:hash},null,2));
