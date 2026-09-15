@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { createApp } from '../apps/api/src/app.js';
+import { createAnonymousRequestContext, getRouteRegistrationEvents } from '../apps/api/src/http/context.js';
 import { registerAuthRoutes } from '../apps/api/src/modules/auth/routes.js';
 import { registerKnowledgeRoutes } from '../apps/api/src/modules/knowledge/routes.js';
 import { registerAnsweringRoutes } from '../apps/api/src/modules/answering/routes.js';
@@ -14,7 +15,6 @@ import { hashPassword } from '../apps/api/src/services/auth.js';
 
 type OpenApiDocument = {
   paths: Record<string, Record<string, unknown>>;
-  'x-runtime-route-tree'?: string;
 };
 
 type AuthHeaders = {cookie:string;'x-csrf-token':string};
@@ -28,6 +28,110 @@ const routeRegistrars: Array<(app: FastifyInstance, context: never) => void> = [
   registerUnmatchedRoutes,
   registerNotificationRoutes,
   registerOperationRoutes,
+];
+type RouteRegistration = Readonly<{method:string;path:string}>;
+const get = (path:string):RouteRegistration[] => [{method:'GET',path},{method:'HEAD',path}];
+const route = (method:string,path:string):RouteRegistration[] => [{method,path}];
+// Frozen from the route declarations in v1.0.3 commit 28a78ca. Fastify emits the
+// automatic HEAD event immediately after every GET event; no old route used a
+// method array, so each remaining declaration emitted one event.
+const v103RouteRegistrationEvents:RouteRegistration[] = [
+  ...get('/api/v1/health/live'),
+  ...get('/api/v1/health/ready'),
+  ...get('/api/v1/status'),
+  ...route('POST','/api/v1/auth/login'),
+  ...route('POST','/api/v1/auth/register'),
+  ...get('/api/v1/auth/session'),
+  ...route('POST','/api/v1/auth/logout'),
+  ...get('/api/v1/developer/accounts'),
+  ...route('POST','/api/v1/developer/accounts/:id/reset-password'),
+  ...route('POST','/api/v1/internal/qq/answer'),
+  ...route('POST','/api/v1/internal/qq/transcribe'),
+  ...route('POST','/api/v1/internal/qq/materials'),
+  ...get('/api/v1/internal/qq/attachments/:id'),
+  ...route('POST','/api/v1/internal/qq/heartbeat'),
+  ...get('/api/v1/internal/qq/offline/preferences'),
+  ...route('POST','/api/v1/internal/qq/offline/questions'),
+  ...route('POST','/api/v1/internal/qq/offline/questions/:id/complete'),
+  ...route('POST','/api/v1/internal/qq/groups'),
+  ...route('POST','/api/v1/internal/qq/notifications/claim'),
+  ...route('POST','/api/v1/internal/qq/notifications/:id/begin'),
+  ...route('POST','/api/v1/internal/qq/notifications/:id/result'),
+  ...route('POST','/api/v1/internal/qq/unmatched-replies/claim'),
+  ...route('POST','/api/v1/internal/qq/unmatched-replies/:id/begin'),
+  ...route('POST','/api/v1/internal/qq/unmatched-replies/:id/result'),
+  ...get('/api/v1/faqs'),
+  ...route('POST','/api/v1/faqs'),
+  ...route('POST','/api/v1/faqs/batch'),
+  ...route('POST','/api/v1/faqs/abuse-lexicon/import'),
+  ...route('POST','/api/v1/faqs/optimize-answer'),
+  ...route('PATCH','/api/v1/faqs/:id'),
+  ...route('DELETE','/api/v1/faqs/:id'),
+  ...get('/api/v1/faqs/export'),
+  ...route('POST','/api/v1/faqs/import'),
+  ...get('/api/v1/faqs/export.xlsx'),
+  ...get('/api/v1/faqs/export-package.zip'),
+  ...route('POST','/api/v1/faqs/import.xlsx'),
+  ...get('/api/v1/knowledge/categories'),
+  ...route('POST','/api/v1/knowledge/categories'),
+  ...route('PATCH','/api/v1/knowledge/categories/:id'),
+  ...route('DELETE','/api/v1/knowledge/categories/:id'),
+  ...route('POST','/api/v1/faqs/:id/attachments'),
+  ...route('DELETE','/api/v1/faqs/:id/attachments/:attachmentId'),
+  ...get('/api/v1/faqs/:id/attachments/:attachmentId/download'),
+  ...get('/api/v1/rag/tree'),
+  ...route('POST','/api/v1/rag/folders'),
+  ...route('PATCH','/api/v1/rag/folders/:id'),
+  ...route('DELETE','/api/v1/rag/folders/:id'),
+  ...route('POST','/api/v1/rag/documents'),
+  ...get('/api/v1/rag/export.xlsx'),
+  ...get('/api/v1/rag/export-package.zip'),
+  ...route('DELETE','/api/v1/rag/documents/:id'),
+  ...route('POST','/api/v1/rag/documents/:id/reparse'),
+  ...get('/api/v1/rag/documents/:id/chunks'),
+  ...get('/api/v1/rag/documents/:id/graph'),
+  ...get('/api/v1/rag/settings'),
+  ...route('PATCH','/api/v1/rag/settings'),
+  ...get('/api/v1/rag/models'),
+  ...route('POST','/api/v1/rag/search'),
+  ...route('POST','/api/v1/rag/evaluate'),
+  ...get('/api/v1/unmatched'),
+  ...get('/api/v1/unmatched/preferences'),
+  ...route('PATCH','/api/v1/unmatched/preferences'),
+  ...route('PATCH','/api/v1/unmatched/:id/qq-students/:senderId'),
+  ...route('POST','/api/v1/unmatched/:id/resolve'),
+  ...route('POST','/api/v1/unmatched/batch'),
+  ...get('/api/v1/admin/developer/access'),
+  ...route('POST','/api/v1/admin/developer/unlock'),
+  ...get('/api/v1/admin/account'),
+  ...route('POST','/api/v1/admin/account/upgrade'),
+  ...get('/api/v1/admin/status'),
+  ...get('/api/v1/admin/bot/config'),
+  ...route('POST','/api/v1/admin/bot/config'),
+  ...route('POST','/api/v1/admin/bot/start'),
+  ...route('POST','/api/v1/admin/bot/stop'),
+  ...get('/api/v1/admin/qq/groups'),
+  ...route('PATCH','/api/v1/admin/qq/groups/:id'),
+  ...route('DELETE','/api/v1/admin/qq/groups/:id'),
+  ...get('/api/v1/admin/materials/categories'),
+  ...route('POST','/api/v1/admin/materials/categories'),
+  ...route('PATCH','/api/v1/admin/materials/categories/:id'),
+  ...route('DELETE','/api/v1/admin/materials/categories/:id'),
+  ...get('/api/v1/admin/materials'),
+  ...route('PATCH','/api/v1/admin/materials/:id'),
+  ...get('/api/v1/admin/materials/:id/download'),
+  ...get('/api/v1/admin/materials/download.zip'),
+  ...route('DELETE','/api/v1/admin/materials/:id'),
+  ...route('DELETE','/api/v1/admin/materials'),
+  ...get('/api/v1/admin/notifications'),
+  ...route('DELETE','/api/v1/admin/notifications/:id'),
+  ...route('POST','/api/v1/admin/notifications'),
+  ...get('/api/v1/admin/models'),
+  ...route('POST','/api/v1/admin/models/:provider/connect'),
+  ...route('POST','/api/v1/admin/models/:provider/disconnect'),
+  ...route('POST','/api/v1/admin/models/select'),
+  ...route('POST','/api/v1/admin/answer/test'),
+  ...get('/api/v1/admin/openapi'),
 ];
 const faq = (question:string) => ({question,answer:`${question}的标准答案`,keywords:[question],category:'校园服务',status:'active',confirmed:true});
 
@@ -61,12 +165,23 @@ test('显式 v1.0.3 基线保留全部方法、路径和路由注册顺序', asy
   const { app } = await createApp({ dbPath: ':memory:', logger: false, modelKey: '', botToken: 'route-compatibility-token' });
   t.after(() => app.close());
   assert.deepEqual(methodPathSet(app.swagger() as OpenApiDocument), methodPathSet(frozen));
-  assert.equal(app.printRoutes({commonPrefix:false}),frozen['x-runtime-route-tree']);
+  assert.deepEqual(
+    getRouteRegistrationEvents(app).filter(event=>event.path.startsWith('/api/v1/')),
+    v103RouteRegistrationEvents,
+  );
 });
 
 test('onRequest 为公开和失败请求预置匿名请求上下文', async t => {
+  assert.deepEqual(createAnonymousRequestContext('route-context-id'),{
+    user:null,
+    role:null,
+    workspaceId:null,
+    csrfToken:null,
+    correlationId:'route-context-id',
+  });
   const source=readFileSync('apps/api/src/app.ts','utf8');
   assert.match(source,/addHook\('onRequest'/,'app.ts 必须在 onRequest 初始化请求上下文');
+  assert.match(source,/createAnonymousRequestContext\(req\.id\)/,'onRequest 必须使用已验证的匿名上下文工厂');
   const {app}=await createApp({dbPath:':memory:',logger:false,modelKey:'',botToken:'route-context-token'});
   t.after(()=>app.close());
   assert.equal(app.hasRequestDecorator('campusContext'),true);

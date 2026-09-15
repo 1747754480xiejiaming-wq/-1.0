@@ -28,6 +28,30 @@ export interface RequestContext {
   csrfToken: string | null;
   correlationId: string;
 }
+
+export interface RouteRegistrationEvent {
+  readonly method: string;
+  readonly path: string;
+}
+
+const routeRegistrationEvents = new WeakMap<FastifyInstance, RouteRegistrationEvent[]>();
+
+export function createAnonymousRequestContext(requestId:string):RequestContext {
+  return {user:null,role:null,workspaceId:null,csrfToken:null,correlationId:requestId};
+}
+
+export function captureRouteRegistrationEvents(app:FastifyInstance):void {
+  const events:RouteRegistrationEvent[]=[];
+  routeRegistrationEvents.set(app,events);
+  app.addHook('onRoute',options=>{
+    const methods=Array.isArray(options.method)?options.method:[options.method];
+    for(const method of methods)events.push(Object.freeze({method:String(method),path:options.url}));
+  });
+}
+
+export function getRouteRegistrationEvents(app:FastifyInstance):readonly RouteRegistrationEvent[] {
+  return Object.freeze([...(routeRegistrationEvents.get(app)||[])]);
+}
 declare module 'fastify' {
   interface FastifyRequest {
     campusSession?: SessionResult;

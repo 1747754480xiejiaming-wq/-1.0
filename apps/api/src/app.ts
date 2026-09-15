@@ -12,7 +12,12 @@ import { loadConfig, type Config } from './config.js';
 import { Store, hash } from './db/store.js';
 import { AppError } from './errors.js';
 import { registerErrorHandlers } from './http/errors.js';
-import type { CreateAppDependencies, RouteContext } from './http/context.js';
+import {
+  captureRouteRegistrationEvents,
+  createAnonymousRequestContext,
+  type CreateAppDependencies,
+  type RouteContext,
+} from './http/context.js';
 import { hashPassword } from './services/auth.js';
 import { AnswerService } from './services/answer.js';
 import { AnswerOptimizer } from './services/answer-optimizer.js';
@@ -34,9 +39,10 @@ export async function createApp(overrides:Partial<Config>={},dependencies:Create
   store.lockDeveloperAccess();
   if(config.developerPassword)await store.ensureDeveloper(config.developerUsername,await hashPassword(config.developerPassword));
   const app=Fastify({bodyLimit:32768,logger:config.logger,logController:new LogController({disableRequestLogging:true}),genReqId:()=>randomUUID(),trustProxy:['127.0.0.1','::1'],ajv:{customOptions:{removeAdditional:false,coerceTypes:'array',allErrors:false}}});
+  captureRouteRegistrationEvents(app);
   app.decorateRequest('campusSession',undefined);
   app.decorateRequest('campusContext',undefined);
-  app.addHook('onRequest',async req=>{req.campusContext={user:null,role:null,workspaceId:null,csrfToken:null,correlationId:req.id};});
+  app.addHook('onRequest',async req=>{req.campusContext=createAnonymousRequestContext(req.id);});
   await app.register(cookie);
   await app.register(multipart,{limits:{files:200,fileSize:25*1024*1024,parts:220},preservePath:true});
   await app.register(cors,{origin:(origin,cb)=>cb(null,!origin||config.origins.includes(origin)),credentials:true,methods:['GET','POST','PATCH','DELETE','OPTIONS'],allowedHeaders:['Content-Type','X-CSRF-Token','Authorization']});
