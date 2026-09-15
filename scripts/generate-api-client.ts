@@ -1,6 +1,6 @@
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, relative, resolve} from 'node:path';
-import {openApiSourceHash} from './openapi-source-hash.js';
+import {normalizeLineEndings, openApiSourceHash} from './openapi-source-hash.js';
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 const SNAPSHOT_PATH = 'docs/api/openapi-v1.0.3.json';
@@ -151,7 +151,8 @@ function main(): void {
   const source = generatedSource(openApiSourceHash(snapshot), collectOperations(document));
 
   if (process.argv.includes('--check')) {
-    if (!existsSync(outputPath) || readFileSync(outputPath, 'utf8') !== source) {
+    const currentSource = existsSync(outputPath) ? readFileSync(outputPath, 'utf8') : '';
+    if (normalizeLineEndings(currentSource) !== normalizeLineEndings(source)) {
       throw new Error(`前端 API 客户端已过期，请运行 npm run api:generate：${relative(projectRoot, outputPath)}`);
     }
     process.stdout.write(`前端 API 客户端与 OpenAPI 快照一致：${relative(projectRoot, outputPath)}\n`);
