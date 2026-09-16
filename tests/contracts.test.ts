@@ -9,6 +9,7 @@ import {
   API_ERROR_SCHEMA,
   CLARIFICATION_DECISION_SCHEMA,
   CONVERSATION_SCHEMA,
+  DECISION_SIGNATURE_SCHEMA,
   EVALUATION_DATASET_SCHEMA,
   INPUT_INTENTS,
   JOB_SCHEMA,
@@ -17,10 +18,14 @@ import {
   TEACHER_TIMING_INPUT_SCHEMA,
   pageResultSchema,
   type AnswerResult,
+  type DecisionSignature,
   type EvaluationDataset,
+  type EvaluationMetricResult,
+  type EvaluationRunSummary,
   type InputIntent,
   type JobStatus,
   validateEvaluationDataset,
+  validateDecisionSignature,
 } from '@campus/contracts';
 import {
   API_OPERATIONS,
@@ -106,7 +111,12 @@ test('四目标评测数据严格校验并拒绝不可判定样本', async () =>
   await assertStrictSchema(EVALUATION_DATASET_SCHEMA, {...sample});
 
   const invalidDatasets: unknown[] = [
+    (({datasetVersion: _, ...dataset}) => dataset)(sample),
+    (({evidenceKind: _, ...dataset}) => dataset)(sample),
     {...sample, datasetVersion: ''},
+    {...sample, samples: [(({risk: _, ...item}) => item)(sample.samples[0]!)]},
+    {...sample, samples: [(({expectedDisposition: _, ...item}) => item)(sample.samples[0]!)]},
+    {...sample, samples: [(({requiredFacts: _, ...item}) => item)(sample.samples[0]!)]},
     {...sample, samples: [{...sample.samples[0]!, risk: 'critical'}]},
     {...sample, samples: [{...sample.samples[0]!, expectedDisposition: 'defer'}]},
     {...sample, samples: [{...sample.samples[0]!, requiredFacts: []}]},
@@ -115,6 +125,64 @@ test('四目标评测数据严格校验并拒绝不可判定样本', async () =>
   for (const invalid of invalidDatasets) {
     assert.equal(validateEvaluationDataset(invalid).success, false);
   }
+});
+
+test('决策签名冻结 SHA-256、排序数组和严格字段', async () => {
+  const signature: DecisionSignature = {
+    disposition: 'answer',
+    faqId: 'exam-deferral',
+    knowledgeVersion: 'kv-1',
+    configVersion: 'mvp-1',
+    keyFacts: ['申请截止时间', '课程名称'],
+    evidenceIds: ['evidence-001', 'evidence-002'],
+    hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  };
+
+  assert.equal(validateDecisionSignature(signature).success, true);
+  await assertStrictSchema(DECISION_SIGNATURE_SCHEMA, {...signature});
+  const invalidSignatures: unknown[] = [
+    (({hash: _, ...value}) => value)(signature),
+    {...signature, hash: 'A'.repeat(64)},
+    {...signature, hash: 'a'.repeat(63)},
+    {...signature, keyFacts: ['课程名称', '申请截止时间']},
+    {...signature, evidenceIds: ['evidence-001', 'evidence-001']},
+    {...signature, unexpected: true},
+  ];
+  for (const invalid of invalidSignatures) {
+    assert.equal(validateDecisionSignature(invalid).success, false);
+  }
+});
+
+test('合成评测结果在类型层不得宣称完成或通过', () => {
+  const awaitingMetric = {
+    metric: 'correctness', numerator: 0, denominator: 0, value: null, target: 0.9,
+    comparator: 'gte', status: 'awaiting_real_data',
+  } satisfies EvaluationMetricResult;
+  const syntheticAwaitingRun = {
+    runId: 'run-synthetic-001', datasetVersion: 'synthetic-1', evidenceKind: 'synthetic',
+    knowledgeVersion: 'kv-1', configVersion: 'mvp-1', codeVersion: 'code-1',
+    status: 'awaiting_real_data', metrics: [awaitingMetric], sampleCount: 1, startedAt: 1, completedAt: null,
+  } satisfies EvaluationRunSummary;
+  const teacherCompletedRun = {
+    ...syntheticAwaitingRun,
+    evidenceKind: 'teacher',
+    status: 'completed',
+    metrics: [{...awaitingMetric, denominator: 1, value: 1, status: 'pass'}],
+    completedAt: 2,
+  } satisfies EvaluationRunSummary;
+
+  type SyntheticRun = Extract<EvaluationRunSummary, {evidenceKind: 'synthetic'}>;
+  const completed = 'completed' as const;
+  const passingMetric = {...awaitingMetric, denominator: 1, value: 1, status: 'pass'} as const;
+  // @ts-expect-error 合成数据不能完成。
+  const invalidSyntheticStatus: SyntheticRun['status'] = completed;
+  // @ts-expect-error 合成数据不能包含可宣称达标的指标。
+  const invalidSyntheticMetric: SyntheticRun['metrics'][number] = passingMetric;
+
+  assert.equal(syntheticAwaitingRun.status, 'awaiting_real_data');
+  assert.equal(teacherCompletedRun.status, 'completed');
+  assert.equal(invalidSyntheticStatus, 'completed');
+  assert.equal(invalidSyntheticMetric.status, 'pass');
 });
 
 test('追问与教师计时契约要求完整上下文且拒绝未知字段', async () => {

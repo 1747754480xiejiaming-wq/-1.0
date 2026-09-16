@@ -31,19 +31,35 @@ export interface EvaluationMetricResult {
   status: 'pass' | 'fail' | 'awaiting_real_data';
 }
 
-export interface EvaluationRunSummary {
+export interface AwaitingEvaluationMetricResult extends Omit<EvaluationMetricResult, 'value' | 'status'> {
+  value: null;
+  status: 'awaiting_real_data';
+}
+
+interface EvaluationRunSummaryBase {
   runId: string;
   datasetVersion: string;
-  evidenceKind: EvaluationEvidenceKind;
   knowledgeVersion: string;
   configVersion: string;
   codeVersion: string;
-  status: 'completed' | 'failed' | 'awaiting_real_data';
-  metrics: EvaluationMetricResult[];
   sampleCount: number;
   startedAt: number;
   completedAt: number | null;
 }
+
+export interface TeacherEvaluationRunSummary extends EvaluationRunSummaryBase {
+  evidenceKind: 'teacher';
+  status: 'completed' | 'failed' | 'awaiting_real_data';
+  metrics: EvaluationMetricResult[];
+}
+
+export interface SyntheticEvaluationRunSummary extends EvaluationRunSummaryBase {
+  evidenceKind: 'synthetic';
+  status: 'failed' | 'awaiting_real_data';
+  metrics: AwaitingEvaluationMetricResult[];
+}
+
+export type EvaluationRunSummary = TeacherEvaluationRunSummary | SyntheticEvaluationRunSummary;
 
 const NONEMPTY_STRING_SCHEMA = {type: 'string', minLength: 1} as const;
 
