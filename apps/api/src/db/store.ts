@@ -10,7 +10,7 @@ import { faqs } from './schema.js';
 import { DEMO_FAQS } from './seed.js';
 import { AppError, conflict } from '../errors.js';
 import { ABUSE_LEXICON_CANDIDATES } from '../services/abuse-lexicon.js';
-import { OptimisticConcurrencyError } from '../core/unit-of-work.js';
+import { DuplicateKnowledgeQuestionError, OptimisticConcurrencyError } from '../core/unit-of-work.js';
 import { SqliteUnitOfWork } from '../infrastructure/sqlite/unit-of-work.js';
 
 export const DAY = 86_400_000;
@@ -89,6 +89,7 @@ export class Store {
         if (existing) this.unitOfWork.repositories.knowledge.updateFaq(this.currentWorkspace(),nextId,version!,repositoryInput,actor);
         else this.unitOfWork.repositories.knowledge.createFaq(this.currentWorkspace(),nextId,repositoryInput,actor);
       } catch (error) {
+        if (error instanceof DuplicateKnowledgeQuestionError) throw new AppError(409,'DUPLICATE_FAQ','已有相同的标准问题，请编辑现有条目。');
         if (error instanceof OptimisticConcurrencyError) throw conflict();
         throw error;
       }

@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import type {Faq, FaqAttachment, FaqInput, PageResult} from '@campus/contracts';
-import {OptimisticConcurrencyError} from '../../core/unit-of-work.js';
+import {DuplicateKnowledgeQuestionError, OptimisticConcurrencyError} from '../../core/unit-of-work.js';
 import type {KnowledgeListQuery, KnowledgeRepository} from '../../modules/knowledge/repository.js';
 
 interface FaqRow {
@@ -56,46 +56,55 @@ export class SqliteKnowledgeRepository implements KnowledgeRepository {
   createFaq(workspaceId: string, id: string, input: FaqInput, actorId: string, isDemo = false): Faq {
     const question = input.question.trim();
     const now = Date.now();
-    this.sqlite.prepare(`INSERT INTO faqs(
-      id,owner_id,question_key,question,answer,keywords,category,library_type,status,
-      version,is_demo,updated_by,created_at,updated_at
-    ) VALUES(?,?,?,?,?,?,?,?,?,1,?,?,?,?)`).run(
-      id,
-      workspaceId,
-      `${workspaceId}:${normalize(question)}`,
-      question,
-      input.answer.trim(),
-      JSON.stringify([...new Set(input.keywords.map(keyword => keyword.trim()).filter(Boolean))]),
-      input.category.trim(),
-      input.libraryType ?? 'answer',
-      input.status,
-      isDemo ? 1 : 0,
-      actorId,
-      now,
-      now,
-    );
+    try {
+      this.sqlite.prepare(`INSERT INTO faqs(
+        id,owner_id,question_key,question,answer,keywords,category,library_type,status,
+        version,is_demo,updated_by,created_at,updated_at
+      ) VALUES(?,?,?,?,?,?,?,?,?,1,?,?,?,?)`).run(
+        id,
+        workspaceId,
+        `${workspaceId}:${normalize(question)}`,
+        question,
+        input.answer.trim(),
+        JSON.stringify([...new Set(input.keywords.map(keyword => keyword.trim()).filter(Boolean))]),
+        input.category.trim(),
+        input.libraryType ?? 'answer',
+        input.status,
+        isDemo ? 1 : 0,
+        actorId,
+        now,
+        now,
+      );
+    } catch (error) {
+      rethrowQuestionKeyConflict(error);
+    }
     return this.getFaq(workspaceId, id)!;
   }
 
   updateFaq(workspaceId: string, id: string, expectedVersion: number, input: FaqInput, actorId: string): Faq {
     const question = input.question.trim();
-    const result = this.sqlite.prepare(`UPDATE faqs SET
-      question=?, question_key=?, answer=?, keywords=?, category=?, library_type=?, status=?,
-      version=version+1, is_demo=0, updated_by=?, updated_at=?
-      WHERE owner_id=? AND id=? AND version=?`).run(
-      question,
-      `${workspaceId}:${normalize(question)}`,
-      input.answer.trim(),
-      JSON.stringify([...new Set(input.keywords.map(keyword => keyword.trim()).filter(Boolean))]),
-      input.category.trim(),
-      input.libraryType ?? 'answer',
-      input.status,
-      actorId,
-      Date.now(),
-      workspaceId,
-      id,
-      expectedVersion,
-    );
+    let result: Database.RunResult;
+    try {
+      result = this.sqlite.prepare(`UPDATE faqs SET
+        question=?, question_key=?, answer=?, keywords=?, category=?, library_type=?, status=?,
+        version=version+1, is_demo=0, updated_by=?, updated_at=?
+        WHERE owner_id=? AND id=? AND version=?`).run(
+        question,
+        `${workspaceId}:${normalize(question)}`,
+        input.answer.trim(),
+        JSON.stringify([...new Set(input.keywords.map(keyword => keyword.trim()).filter(Boolean))]),
+        input.category.trim(),
+        input.libraryType ?? 'answer',
+        input.status,
+        actorId,
+        Date.now(),
+        workspaceId,
+        id,
+        expectedVersion,
+      );
+    } catch (error) {
+      rethrowQuestionKeyConflict(error);
+    }
     if (result.changes !== 1) throw new OptimisticConcurrencyError();
     return this.getFaq(workspaceId, id)!;
   }
@@ -141,4 +150,16 @@ export class SqliteKnowledgeRepository implements KnowledgeRepository {
 
 function normalize(value: string) {
   return value.normalize('NFKC').toLowerCase().replace(/[\p{P}\p{S}\p{Z}\s]/gu, '');
+}
+
+function rethrowQuestionKeyConflict(error: unknown): never {
+  if (isQuestionKeyUniqueConstraint(error)) throw new DuplicateKnowledgeQuestionError();
+  throw error;
+}
+
+function isQuestionKeyUniqueConstraint(error: unknown): error is Error & {code: string} {
+  return error instanceof Error
+    && 'code' in error
+    && error.code === 'SQLITE_CONSTRAINT_UNIQUE'
+    && error.message === 'UNIQUE constraint failed: faqs.question_key';
 }

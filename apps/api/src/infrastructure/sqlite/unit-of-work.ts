@@ -20,6 +20,6 @@ export class SqliteUnitOfWork implements UnitOfWork {
   }
 
   transaction<T>(operation: (repositories: Repositories) => T): T {
-    return this.sqlite.transaction(() => operation(this.repositories))();
+    return this.sqlite.transaction(() => operation(this.repositories)).immediate();
   }
 }

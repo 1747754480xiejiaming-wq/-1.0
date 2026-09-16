@@ -1,15 +1,70 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import {mkdtempSync, rmSync} from 'node:fs';
 import test from 'node:test';
-import {dirname, resolve} from 'node:path';
+import {dirname, join, resolve} from 'node:path';
+import {tmpdir} from 'node:os';
+import {Worker} from 'node:worker_threads';
 import type {FaqInput} from '@campus/contracts';
-import {OptimisticConcurrencyError} from '../apps/api/src/core/unit-of-work.js';
-import {Store} from '../apps/api/src/db/store.js';
+import {DuplicateKnowledgeQuestionError, OptimisticConcurrencyError} from '../apps/api/src/core/unit-of-work.js';
+import {normalize, Store} from '../apps/api/src/db/store.js';
 import {AppError} from '../apps/api/src/errors.js';
 import {SqliteUnitOfWork} from '../apps/api/src/infrastructure/sqlite/unit-of-work.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+interface ResolverResult {
+  action: 'create' | 'link';
+  actorId: string;
+  ok: boolean;
+  faqId?: string;
+  statusCode?: number;
+  code?: string;
+  errorName?: string;
+}
+
+function resolverWorker(dbPath: string, action: ResolverResult['action'], actorId: string, faqId?: string) {
+  const worker = new Worker(new URL('./fixtures/unmatched-resolve-worker.ts', import.meta.url), {
+    execArgv: ['--import', 'tsx'],
+    workerData: {dbPath, root, action, actorId, faqId},
+  });
+  const readyGate = deferred<void>();
+  const resultGate = deferred<ResolverResult>();
+  let completed = false;
+  const exit = new Promise<void>(resolveExit => {
+    worker.on('exit', code => {
+      if (code !== 0 || !completed) {
+        const error = new Error(`resolver worker exited with code ${code}`);
+        readyGate.reject(error);
+        resultGate.reject(error);
+      }
+      resolveExit();
+    });
+  });
+  worker.on('message', (message: {type: string; result?: ResolverResult}) => {
+    if (message.type === 'ready') readyGate.resolve();
+    if (message.type === 'result' && message.result) {
+      completed = true;
+      resultGate.resolve(message.result);
+    }
+  });
+  worker.on('error', error => {
+    readyGate.reject(error);
+    resultGate.reject(error);
+  });
+  return {worker, ready: readyGate.promise, result: resultGate.promise, exit};
+}
+
+function deferred<T>() {
+  let resolvePromise!: (value: T | PromiseLike<T>) => void;
+  let rejectPromise!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolve, reject) => {
+    resolvePromise = resolve;
+    rejectPromise = reject;
+  });
+  return {promise, resolve: resolvePromise, reject: rejectPromise};
+}
 
 function fixture() {
   const store = new Store(':memory:', root);
@@ -29,7 +84,7 @@ function seedFaq(store: Store, workspaceId: string, id: string, updatedAt: numbe
     id, owner_id, question_key, question, answer, keywords, category,
     library_type, status, version, is_demo, created_at, updated_at
   ) VALUES(?, ?, ?, ?, ?, ?, '测试分类', 'answer', 'active', 1, 0, ?, ?)`)
-    .run(id, workspaceId, `${workspaceId}:${id}`, question, `答案-${id}`, JSON.stringify(['关键词']), updatedAt, updatedAt);
+    .run(id, workspaceId, `${workspaceId}:${normalize(question)}`, question, `答案-${id}`, JSON.stringify(['关键词']), updatedAt, updatedAt);
 }
 
 function seedUnmatched(store: Store, workspaceId: string, id: string, lastSeen: number) {
@@ -134,6 +189,68 @@ test('FAQ 乐观版本更新只接受当前版本', () => {
   }
 });
 
+test('知识仓储将创建和更新的重复标准问题翻译为数据库无关冲突', () => {
+  const {store, unitOfWork} = fixture();
+  try {
+    seedCategory(store, 'workspace-a');
+    seedFaq(store, 'workspace-a', 'faq-a', 100, '重复问题');
+    seedFaq(store, 'workspace-a', 'faq-b', 100, '可更新问题');
+    const duplicateInput: FaqInput = {
+      question: '重复问题', answer: '答案', keywords: ['重复'], category: '测试分类',
+      status: 'active', confirmed: true, libraryType: 'answer',
+    };
+
+    assert.throws(
+      () => unitOfWork.transaction(repositories =>
+        repositories.knowledge.createFaq('workspace-a', 'faq-c', duplicateInput, '教师')),
+      DuplicateKnowledgeQuestionError,
+    );
+    assert.throws(
+      () => unitOfWork.transaction(repositories =>
+        repositories.knowledge.updateFaq('workspace-a', 'faq-b', 1, duplicateInput, '教师')),
+      DuplicateKnowledgeQuestionError,
+    );
+    assert.throws(
+      () => unitOfWork.transaction(repositories =>
+        repositories.knowledge.createFaq('workspace-a', 'faq-a', {...duplicateInput, question: '不同问题'}, '教师')),
+      (error: unknown) => error instanceof Error
+        && !(error instanceof DuplicateKnowledgeQuestionError)
+        && 'code' in error
+        && error.code === 'SQLITE_CONSTRAINT_PRIMARYKEY',
+    );
+    assert.equal(unitOfWork.transaction(repositories => repositories.knowledge.getFaq('workspace-a', 'faq-c')), undefined);
+    assert.equal(unitOfWork.transaction(repositories => repositories.knowledge.getFaq('workspace-a', 'faq-b'))?.question, '可更新问题');
+  } finally {
+    store.close();
+  }
+});
+
+test('Store 将仓储重复问题冲突保持为 DUPLICATE_FAQ 409', () => {
+  const {store} = fixture();
+  try {
+    store.enterWorkspace('workspace-a');
+    seedCategory(store, 'workspace-a');
+    const input: FaqInput = {
+      question: '门面重复问题', answer: '答案', keywords: ['重复'], category: '测试分类',
+      status: 'active', confirmed: true, libraryType: 'answer',
+    };
+    const first = store.saveFaq(input, '教师');
+    const second = store.saveFaq({...input, question: '另一问题'}, '教师');
+    assert.throws(
+      () => store.saveFaq(input, '教师'),
+      (error: unknown) => error instanceof AppError && error.statusCode === 409 && error.code === 'DUPLICATE_FAQ',
+    );
+    assert.throws(
+      () => store.saveFaq(input, '教师', second.id, second.version),
+      (error: unknown) => error instanceof AppError && error.statusCode === 409 && error.code === 'DUPLICATE_FAQ',
+    );
+    assert.equal(store.getFaq(first.id)?.question, input.question);
+    assert.equal(store.getFaq(second.id)?.question, '另一问题');
+  } finally {
+    store.close();
+  }
+});
+
 test('UnitOfWork 在操作抛错时回滚跨仓储写入', () => {
   const {store, unitOfWork} = fixture();
   try {
@@ -189,20 +306,57 @@ test('所有现有列表在时间相同时使用 ID 稳定分页', () => {
   }
 });
 
-test('两个处理者更新同一待解答记录时只有一个成功', async () => {
-  const {store, unitOfWork} = fixture();
+test('两个独立 SQLite 连接竞争解决待解答时只有一个提交', {timeout: 15_000}, async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'campus-repository-contracts-'));
+  const dbPath = join(directory, 'contracts.sqlite');
+  const setup = new Store(dbPath, root);
+  const workers: ReturnType<typeof resolverWorker>[] = [];
   try {
-    seedUnmatched(store, 'workspace-a', 'unmatched-a', 100);
-    const attempts = await Promise.all([
-      Promise.resolve().then(() => unitOfWork.transaction(repositories =>
-        repositories.unmatched.resolvePending('workspace-a', 'unmatched-a', 'resolved', null))),
-      Promise.resolve().then(() => unitOfWork.transaction(repositories =>
-        repositories.unmatched.resolvePending('workspace-a', 'unmatched-a', 'ignored', null))),
-    ]);
+    seedCategory(setup, 'workspace-a');
+    seedFaq(setup, 'workspace-a', 'linked-faq', Date.now(), '已有标准问题');
+    seedUnmatched(setup, 'workspace-a', 'unmatched-a', Date.now());
+    setup.sqlite.prepare(`INSERT INTO unmatched_qq_students(
+      question_id,sender_id,sender_name,chat_kind,target_id,question_count,first_seen,last_seen
+    ) VALUES('unmatched-a','student-a','学生 A','c2c','student-a',1,?,?)`).run(Date.now(), Date.now());
+    setup.close();
 
-    assert.equal(attempts.filter(Boolean).length, 1);
-    assert.equal(attempts.filter(value => !value).length, 1);
+    workers.push(
+      resolverWorker(dbPath, 'create', 'worker-create'),
+      resolverWorker(dbPath, 'link', 'worker-link', 'linked-faq'),
+    );
+    await Promise.all(workers.map(worker => worker.ready));
+    for (const worker of workers) worker.worker.postMessage('go');
+    const results = await Promise.all(workers.map(worker => worker.result));
+    await Promise.all(workers.map(worker => worker.exit));
+
+    const successes = results.filter(result => result.ok);
+    const failures = results.filter(result => !result.ok);
+    assert.equal(successes.length, 1, JSON.stringify(results));
+    assert.equal(failures.length, 1, JSON.stringify(results));
+    assert.deepEqual(
+      {statusCode: failures[0]?.statusCode, code: failures[0]?.code, errorName: failures[0]?.errorName},
+      {statusCode: 409, code: 'CONFLICT', errorName: 'Error'},
+    );
+
+    const verifier = new Store(dbPath, root);
+    try {
+      verifier.enterWorkspace('workspace-a');
+      const winner = successes[0]!;
+      const unmatched = verifier.listUnmatched({}).items[0]!;
+      assert.equal(unmatched.status, 'resolved');
+      assert.equal(unmatched.resolvedFaqId, winner.faqId);
+      const createdFaqs = verifier.sqlite.prepare("SELECT id FROM faqs WHERE owner_id='workspace-a' AND question='并发创建的问题'").all() as {id: string}[];
+      assert.equal(createdFaqs.length, winner.action === 'create' ? 1 : 0);
+      assert.equal((verifier.sqlite.prepare("SELECT count(*) AS count FROM unmatched_reply_targets WHERE question_id='unmatched-a'").get() as {count: number}).count, 1);
+      const audit = verifier.sqlite.prepare("SELECT actor_id AS actorId,action FROM admin_audit WHERE actor_id LIKE 'worker-%' ORDER BY id").all() as {actorId: string; action: string}[];
+      assert.deepEqual(audit.map(row => row.actorId), Array(winner.action === 'create' ? 2 : 1).fill(winner.actorId));
+      assert.deepEqual(audit.map(row => row.action), winner.action === 'create' ? ['faq.create', 'unmatched.create'] : ['unmatched.link']);
+    } finally {
+      verifier.close();
+    }
   } finally {
-    store.close();
+    if (setup.sqlite.open) setup.close();
+    await Promise.all(workers.map(({worker}) => worker.terminate()));
+    rmSync(directory, {recursive: true, force: true});
   }
 });

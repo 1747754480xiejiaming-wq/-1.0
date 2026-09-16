@@ -22,3 +22,10 @@ export class OptimisticConcurrencyError extends Error {
     this.name = 'OptimisticConcurrencyError';
   }
 }
+
+export class DuplicateKnowledgeQuestionError extends Error {
+  constructor(message = '当前工作区已有相同的标准问题。') {
+    super(message);
+    this.name = 'DuplicateKnowledgeQuestionError';
+  }
+}
