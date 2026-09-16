@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { readFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -10,6 +10,8 @@ import { faqs } from './schema.js';
 import { DEMO_FAQS } from './seed.js';
 import { AppError, conflict } from '../errors.js';
 import { ABUSE_LEXICON_CANDIDATES } from '../services/abuse-lexicon.js';
+import { OptimisticConcurrencyError } from '../core/unit-of-work.js';
+import { SqliteUnitOfWork } from '../infrastructure/sqlite/unit-of-work.js';
 
 export const DAY = 86_400_000;
 export const hash = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -26,10 +28,12 @@ export const MATERIAL_UNRELATED_CATEGORY='无关类别';
 export class Store {
   readonly sqlite: Database.Database;
   readonly orm: ReturnType<typeof drizzle>;
+  readonly unitOfWork: SqliteUnitOfWork;
   private readonly workspaceContext=new AsyncLocalStorage<string>();
   constructor(readonly path: string, root: string) {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
     this.sqlite = new Database(path); this.sqlite.pragma('journal_mode = WAL'); this.sqlite.pragma('busy_timeout = 5000'); this.sqlite.pragma('foreign_keys = ON');
+    this.unitOfWork = new SqliteUnitOfWork(this.sqlite);
     this.sqlite.exec('CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY,applied_at INTEGER NOT NULL)');
     for (const file of readdirSync(join(root,'migrations')).filter(name=>/^\d+.*\.sql$/.test(name)).sort()) {
       const version=Number.parseInt(file,10);
@@ -43,22 +47,20 @@ export class Store {
   private scopedKey(value:string){return `${this.currentWorkspace()}:${value}`;}
   botWorkspace(){const row=this.sqlite.prepare("SELECT value FROM runtime_preferences WHERE key='bot_workspace_id' ORDER BY updated_at DESC LIMIT 1").get() as {value:string}|undefined;return row?.value||(this.sqlite.prepare("SELECT workspace_id value FROM admin_users WHERE role='teacher' ORDER BY created_at LIMIT 1").get() as {value:string}|undefined)?.value||'legacy';}
   setBotWorkspace(workspaceId:string){this.sqlite.prepare("INSERT INTO runtime_preferences(owner_id,key,value,updated_at) VALUES(?, 'bot_workspace_id',?,?) ON CONFLICT(owner_id,key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at").run(workspaceId,workspaceId,Date.now());}
-  transaction<T>(fn: () => T): T { return this.sqlite.transaction(fn)(); }
+  transaction<T>(fn: () => T): T { return this.unitOfWork.transaction(fn); }
   cleanup(now = Date.now()) {
     this.sqlite.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now);
     this.sqlite.prepare('DELETE FROM request_dedup WHERE expires_at <= ?').run(now);
     this.sqlite.prepare('DELETE FROM unmatched_questions WHERE last_seen < ?').run(now - 30 * DAY);
   }
   private hydrateFaq(row:typeof faqs.$inferSelect):Faq { return {...publicFaq(row),attachments:this.listFaqAttachments(row.id)}; }
-  getFaq(id: string) { const row = this.orm.select().from(faqs).where(and(eq(faqs.id,id),eq(faqs.ownerId,this.currentWorkspace()))).get(); return row ? this.hydrateFaq(row) : undefined; }
+  getFaq(id: string) { return this.unitOfWork.repositories.knowledge.getFaq(this.currentWorkspace(), id); }
   activeFaqs(libraryType?:FaqLibraryType) { return this.orm.select().from(faqs).where(and(eq(faqs.ownerId,this.currentWorkspace()),eq(faqs.status,'active'),libraryType?eq(faqs.libraryType,libraryType):undefined)).all().map(row=>this.hydrateFaq(row)); }
   listFaqs(query: ListQuery): PageResult<Faq> {
-    const { q = '', status = '', category = '', libraryType='answer', page = 1, pageSize = 20 } = query;
-    const where = and(q ? sql`(instr(lower(${faqs.question}), lower(${q})) > 0 OR instr(lower(${faqs.answer}), lower(${q})) > 0)` : undefined,
-      eq(faqs.ownerId,this.currentWorkspace()),status ? eq(faqs.status,status as 'active'|'disabled') : undefined, category ? eq(faqs.category,category) : undefined,eq(faqs.libraryType,libraryType));
-    const total = this.orm.select({ value: sql<number>`count(*)` }).from(faqs).where(where).get()!.value;
-    const items = this.orm.select().from(faqs).where(where).orderBy(desc(faqs.updatedAt),faqs.id).limit(pageSize).offset((page-1)*pageSize).all().map(row=>this.hydrateFaq(row));
-    return { items, total, page, pageSize };
+    return this.unitOfWork.repositories.knowledge.listFaqs(this.currentWorkspace(), {
+      ...query,
+      status: query.status as FaqStatus | undefined,
+    });
   }
   listFaqsForExport(libraryType:FaqLibraryType,limit=10000):Faq[] {
     return this.orm.select().from(faqs).where(and(eq(faqs.ownerId,this.currentWorkspace()),eq(faqs.libraryType,libraryType))).orderBy(desc(faqs.updatedAt),faqs.id).limit(limit).all().map(publicFaq);
@@ -82,8 +84,14 @@ export class Store {
       const questionKey=this.scopedKey(normalize(values.question));
       const duplicate = this.orm.select({id:faqs.id}).from(faqs).where(eq(faqs.questionKey,questionKey)).get();
       if (duplicate && duplicate.id!==nextId) throw new AppError(409,'DUPLICATE_FAQ','已有相同的标准问题，请编辑现有条目。');
-      if (existing) this.orm.update(faqs).set({...values,questionKey,version:existing.version+1,isDemo:false,updatedBy:actor,updatedAt:now}).where(and(eq(faqs.id,nextId),eq(faqs.ownerId,this.currentWorkspace()))).run();
-      else this.orm.insert(faqs).values({...values,id:nextId,ownerId:this.currentWorkspace(),questionKey,version:1,isDemo:false,updatedBy:actor,createdAt:now,updatedAt:now}).run();
+      try {
+        const repositoryInput={...values,confirmed:input.confirmed};
+        if (existing) this.unitOfWork.repositories.knowledge.updateFaq(this.currentWorkspace(),nextId,version!,repositoryInput,actor);
+        else this.unitOfWork.repositories.knowledge.createFaq(this.currentWorkspace(),nextId,repositoryInput,actor);
+      } catch (error) {
+        if (error instanceof OptimisticConcurrencyError) throw conflict();
+        throw error;
+      }
       this.sqlite.prepare('INSERT INTO admin_audit(actor_id,action,faq_id,version,created_at) VALUES(?,?,?,?,?)').run(actor,existing?'faq.update':'faq.create',nextId,existing?existing.version+1:1,now);
       return this.getFaq(nextId)!;
     });
@@ -91,11 +99,11 @@ export class Store {
   deleteFaq(id:string,actor:string,version:number){
     return this.transaction(()=>{
       const existing=this.getFaq(id);if(!existing)throw new AppError(404,'NOT_FOUND','该条目不存在。');if(existing.version!==version)throw conflict();
-      const attachments=this.sqlite.prepare('SELECT stored_name AS storedName FROM faq_attachments WHERE faq_id=?').all(id) as {storedName:string}[];
-      this.sqlite.prepare('UPDATE unmatched_questions SET resolved_faq_id=NULL WHERE resolved_faq_id=?').run(id);
-      this.sqlite.prepare('DELETE FROM faqs WHERE id=?').run(id);
+      let deleted;
+      try { deleted=this.unitOfWork.repositories.knowledge.deleteFaq(this.currentWorkspace(),id,version); }
+      catch(error){if(error instanceof OptimisticConcurrencyError)throw conflict();throw error;}
       this.sqlite.prepare('INSERT INTO admin_audit(actor_id,action,faq_id,version,created_at) VALUES(?,?,?,?,?)').run(actor,'faq.delete',id,existing.version,Date.now());
-      return {id,libraryType:existing.libraryType,attachments};
+      return {id,libraryType:existing.libraryType,attachments:deleted.attachments};
     });
   }
   batchFaqs(ids:string[],libraryType:FaqLibraryType,action:'update'|'delete',actor:string,changes:{category?:string;status?:FaqStatus}={}){
@@ -232,7 +240,7 @@ export class Store {
   recordAnswer(question: string,channel: Channel,result: AnswerResult,unmatchedType: UnmatchedType|null,qqSender?:QqSender) {
     this.transaction(()=>{
       const metric=result.faqId?`faq:${result.faqId}`:result.source==='rag'?'rag':`fallback:${result.fallbackReason}`;
-      this.sqlite.prepare('INSERT INTO question_daily(owner_id,day,channel,metric_key,hits) VALUES(?,?,?,?,1) ON CONFLICT(owner_id,day,channel,metric_key) DO UPDATE SET hits=hits+1').run(this.currentWorkspace(),dateKey(),channel,metric);
+      this.unitOfWork.repositories.answering.recordActivity(this.currentWorkspace(),dateKey(),channel,metric);
       if(!unmatchedType) return;
       const now=Date.now();
       const questionKey=this.scopedKey(hash(normalize(question)));
@@ -274,20 +282,7 @@ export class Store {
   setOfflineAutoReply(enabled:boolean):UnmatchedPreferences {const now=Date.now();this.sqlite.prepare("INSERT INTO runtime_preferences(owner_id,key,value,updated_at) VALUES(?,'offline_auto_reply',?,?) ON CONFLICT(owner_id,key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at").run(this.currentWorkspace(),enabled?'true':'false',now);return this.unmatchedPreferences();}
   servicePreference(key:'qq_auto_start'|'deepseek_auto_start'|'zhipu_auto_start'|'qq_answer_enabled'){const row=this.sqlite.prepare('SELECT value FROM runtime_preferences WHERE owner_id=? AND key=?').get(this.currentWorkspace(),key) as {value:string}|undefined;return row?row.value!=='false':key!=='zhipu_auto_start';}
   setServicePreference(key:'qq_auto_start'|'deepseek_auto_start'|'zhipu_auto_start'|'qq_answer_enabled',enabled:boolean){this.sqlite.prepare('INSERT INTO runtime_preferences(owner_id,key,value,updated_at) VALUES(?,?,?,?) ON CONFLICT(owner_id,key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at').run(this.currentWorkspace(),key,enabled?'true':'false',Date.now());}
-  listUnmatched(query: ListQuery): PageResult<Unmatched> {
-    const {status='',q='',unmatchedType,page=1,pageSize=20}=query; const where:string[]=['owner_id=?'],params:(string|number)[]=[this.currentWorkspace()];
-    if(status) {where.push('status=?');params.push(status);} if(unmatchedType){where.push('queue_type=?');params.push(unmatchedType);} if(q) {where.push('instr(lower(question),lower(?))>0');params.push(q);}
-    const condition=where.length?' WHERE '+where.join(' AND '):'';
-    const total=(this.sqlite.prepare('SELECT count(*) AS n FROM unmatched_questions'+condition).get(...params) as {n:number}).n;
-    const rows=this.sqlite.prepare('SELECT id,question,reason,queue_type AS type,web_count AS webCount,qq_count AS qqCount,status,resolved_faq_id AS resolvedFaqId,first_seen AS firstSeen,last_seen AS lastSeen FROM unmatched_questions'+condition+' ORDER BY last_seen DESC LIMIT ? OFFSET ?').all(...params,pageSize,(page-1)*pageSize) as Omit<Unmatched,'qqStudents'>[];
-    const studentsByQuestion=new Map<string,UnmatchedQqStudent[]>();
-    if(rows.length){
-      const students=this.sqlite.prepare(`SELECT question_id AS questionId,sender_id AS id,coalesce(confirmed_name,sender_name) AS name,qq_number AS qqNumber,question_count AS questionCount,first_seen AS firstSeen,last_seen AS lastSeen
-        FROM unmatched_qq_students WHERE question_id IN (${rows.map(()=>'?').join(',')}) ORDER BY last_seen DESC`).all(...rows.map(row=>row.id)) as (UnmatchedQqStudent&{questionId:string})[];
-      for(const student of students){const list=studentsByQuestion.get(student.questionId)||[];list.push({id:student.id,name:student.name,qqNumber:student.qqNumber,questionCount:student.questionCount,firstSeen:student.firstSeen,lastSeen:student.lastSeen});studentsByQuestion.set(student.questionId,list);}
-    }
-    return {items:rows.map(row=>({...row,qqStudents:studentsByQuestion.get(row.id)||[]})),total,page,pageSize};
-  }
+  listUnmatched(query: ListQuery): PageResult<Unmatched> { return this.unitOfWork.repositories.unmatched.list(this.currentWorkspace(), query); }
   updateUnmatchedQqStudent(questionId:string,senderId:string,input:{name:string;qqNumber:string},actor:string):UnmatchedQqStudent {
     const name=input.name.trim().replace(/[\p{Cc}\p{Cf}]/gu,''),qqNumber=input.qqNumber.trim();
     if(!name||name.length>80)throw new AppError(400,'INVALID_QQ_NAME','QQ 昵称需要为 1 至 80 个字符。');
@@ -301,14 +296,14 @@ export class Store {
   }
   resolveUnmatched(id: string, action: 'create'|'link'|'ignore',actor: string,input?: FaqInput,faqId?: string) {
     return this.transaction(()=>{
-      const record=this.sqlite.prepare('SELECT status FROM unmatched_questions WHERE id=? AND owner_id=?').get(id,this.currentWorkspace()) as {status:string}|undefined;
-      if(!record) throw new AppError(404,'NOT_FOUND','该记录不存在。');
-      if(record.status!=='pending') throw conflict('该记录已被处理，请刷新列表。');
+      const recordStatus=this.unitOfWork.repositories.unmatched.status(this.currentWorkspace(),id);
+      if(!recordStatus) throw new AppError(404,'NOT_FOUND','该记录不存在。');
+      if(recordStatus!=='pending') throw conflict('该记录已被处理，请刷新列表。');
       let faq: Faq|undefined;
       if(action==='create') { if(!input) throw new AppError(400,'INVALID_INPUT','缺少 FAQ 内容。'); faq=this.saveFaq(input,actor); }
       if(action==='link') { faq=faqId?this.getFaq(faqId):undefined; if(!faq || faq.status!=='active') throw new AppError(400,'INVALID_FAQ','请选择已启用的 FAQ。'); }
       const workspace=this.currentWorkspace();
-      this.sqlite.prepare('UPDATE unmatched_questions SET status=?,resolved_faq_id=? WHERE id=? AND owner_id=?').run(action==='ignore'?'ignored':'resolved',faq?.id||null,id,workspace);
+      if(!this.unitOfWork.repositories.unmatched.resolvePending(workspace,id,action==='ignore'?'ignored':'resolved',faq?.id||null))throw conflict('该记录已被处理，请刷新列表。');
       let queuedReplies=0;
       if(faq){
         const now=Date.now(),students=this.sqlite.prepare(`SELECT sender_id AS senderId,coalesce(confirmed_name,sender_name) AS senderName,
@@ -408,9 +403,7 @@ export class Store {
       const groups=this.sqlite.prepare(`SELECT id FROM qq_groups WHERE owner_id=? AND enabled=1 AND deleted_at IS NULL AND id IN (${groupIds.map(()=>'?').join(',')})${appId?' AND bot_app_id=?':''}`).all(this.currentWorkspace(),...groupIds,...(appId?[appId]:[])) as {id:string}[];if(groups.length!==groupIds.length)throw new AppError(400,'INVALID_GROUP_SELECTION','选择中包含已停用、已删除或不属于当前机器人的群聊，请刷新并重新选择。');
       const id=randomUUID(),now=Date.now();this.sqlite.prepare('INSERT INTO notifications(id,owner_id,request_id,payload_hash,title,content,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)').run(id,this.currentWorkspace(),input.requestId,payloadHash,title,content,actor,now);const insert=this.sqlite.prepare('INSERT INTO notification_targets(id,notification_id,group_id,status,attempt_count) VALUES(?,?,?,\'pending\',0)');for(const groupId of groupIds)insert.run(randomUUID(),id,groupId);const attach=this.sqlite.prepare('INSERT INTO notification_attachments(id,notification_id,name,stored_name,kind,mime,size,created_at) VALUES(?,?,?,?,?,?,?,?)');for(const item of attachments)attach.run(randomUUID(),id,item.name,item.storedName,item.kind,item.mime,item.size,now);this.sqlite.prepare('INSERT INTO admin_audit(actor_id,action,faq_id,version,owner_id,created_at) VALUES(?,?,?,?,?,?)').run(actor,'notification.send',null,null,this.currentWorkspace(),now);return this.notification(id);});
   }
-  listNotifications(limit=20):NotificationRecord[] {
-    const ids=this.sqlite.prepare('SELECT id FROM notifications WHERE owner_id=? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT ?').all(this.currentWorkspace(),Math.max(1,Math.min(50,limit))) as {id:string}[];return ids.map(item=>this.notification(item.id));
-  }
+  listNotifications(limit=20):NotificationRecord[] { return this.unitOfWork.repositories.notifications.list(this.currentWorkspace(), limit); }
   deleteNotification(id:string,actor:string):{ok:true;id:string} {
     return this.sqlite.transaction(()=>{
       const row=this.sqlite.prepare('SELECT deleted_at FROM notifications WHERE id=? AND owner_id=?').get(id,this.currentWorkspace()) as {deleted_at:number|null}|undefined;
