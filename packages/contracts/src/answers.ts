@@ -1,3 +1,5 @@
+import {DECISION_SIGNATURE_SCHEMA, type DecisionSignature} from './clarification.js';
+
 export type Channel = 'web' | 'qq';
 export type AnswerSource =
   | 'faq_keyword'
@@ -60,6 +62,9 @@ export interface AnswerResult {
   fallbackReason: FallbackReason | null;
   isDemo: boolean;
   attachments?: AnswerAttachment[];
+  conversationId?: string;
+  clarification?: {missingSlot: string; question: string; round: 1 | 2};
+  decisionSignature?: DecisionSignature;
 }
 
 export interface AnswerEvidenceReference {
@@ -150,7 +155,20 @@ export const ANSWER_RESPONSE_SCHEMA = {
     fallbackReason: {anyOf: [{type: 'string'}, {type: 'null'}]},
     isDemo: {type: 'boolean'},
     attachments: {type: 'array', items: ANSWER_ATTACHMENT_SCHEMA},
+    conversationId: {type: 'string', minLength: 1, maxLength: 160},
+    clarification: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['missingSlot', 'question', 'round'],
+      properties: {
+        missingSlot: {type: 'string', minLength: 1, maxLength: 160},
+        question: {type: 'string', minLength: 1, maxLength: 160},
+        round: {enum: [1, 2]},
+      },
+    },
+    decisionSignature: DECISION_SIGNATURE_SCHEMA,
   },
+  allOf: [{if: {required: ['clarification']}, then: {required: ['conversationId']}}],
 } as const;
 
 export const ANSWER_TRACE_SCHEMA = {

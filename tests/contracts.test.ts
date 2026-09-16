@@ -7,15 +7,20 @@ import {
   ANSWER_RESPONSE_SCHEMA,
   ANSWER_TRACE_SCHEMA,
   API_ERROR_SCHEMA,
+  CLARIFICATION_DECISION_SCHEMA,
   CONVERSATION_SCHEMA,
+  EVALUATION_DATASET_SCHEMA,
   INPUT_INTENTS,
   JOB_SCHEMA,
   JOB_STATUSES,
   KNOWLEDGE_VERSION_SCHEMA,
+  TEACHER_TIMING_INPUT_SCHEMA,
   pageResultSchema,
   type AnswerResult,
+  type EvaluationDataset,
   type InputIntent,
   type JobStatus,
+  validateEvaluationDataset,
 } from '@campus/contracts';
 import {
   API_OPERATIONS,
@@ -78,6 +83,68 @@ test('旧回答、错误和分页契约保持兼容且严格', async () => {
     total: 1,
     page: 1,
     pageSize: 20,
+  });
+});
+
+test('四目标评测数据严格校验并拒绝不可判定样本', async () => {
+  const sample: EvaluationDataset = {
+    datasetVersion: 'teacher-gold-2026-09-16',
+    evidenceKind: 'teacher',
+    knowledgeVersion: 'kv-1',
+    configVersion: 'mvp-1',
+    samples: [{
+      id: 'gold-001',
+      question: '缓考怎么办',
+      expectedDisposition: 'answer',
+      expectedFaqId: 'exam-deferral',
+      requiredFacts: ['申请截止时间'],
+      risk: 'high',
+    }],
+  };
+
+  assert.equal(validateEvaluationDataset(sample).success, true);
+  await assertStrictSchema(EVALUATION_DATASET_SCHEMA, {...sample});
+
+  const invalidDatasets: unknown[] = [
+    {...sample, datasetVersion: ''},
+    {...sample, samples: [{...sample.samples[0]!, risk: 'critical'}]},
+    {...sample, samples: [{...sample.samples[0]!, expectedDisposition: 'defer'}]},
+    {...sample, samples: [{...sample.samples[0]!, requiredFacts: []}]},
+    {...sample, unexpected: true},
+  ];
+  for (const invalid of invalidDatasets) {
+    assert.equal(validateEvaluationDataset(invalid).success, false);
+  }
+});
+
+test('追问与教师计时契约要求完整上下文且拒绝未知字段', async () => {
+  const answerWithClarification = {
+    requestId: 'request-clarify-001',
+    answer: '请补充缓考申请的课程信息。',
+    faqId: null,
+    faqVersion: null,
+    source: 'fallback',
+    fallbackReason: 'ambiguous',
+    isDemo: false,
+    conversationId: 'conversation-001',
+    clarification: {missingSlot: 'course', question: '请问是哪门课程？', round: 1},
+  };
+  assert.equal(await validationStatus(ANSWER_RESPONSE_SCHEMA, answerWithClarification), 204);
+  assert.equal(await validationStatus(ANSWER_RESPONSE_SCHEMA, {
+    ...answerWithClarification,
+    conversationId: undefined,
+  }), 400);
+  assert.equal(await validationStatus(ANSWER_RESPONSE_SCHEMA, {
+    ...answerWithClarification,
+    clarification: {question: '请问是哪门课程？', round: 1},
+  }), 400);
+
+  await assertStrictSchema(CLARIFICATION_DECISION_SCHEMA, {
+    kind: 'ask', conversationId: 'conversation-001', missingSlot: 'course', question: '请问是哪门课程？', round: 1,
+  });
+  await assertStrictSchema(TEACHER_TIMING_INPUT_SCHEMA, {
+    taskId: 'task-001', sessionId: 'session-001', activeMs: 1, elapsedMs: 2,
+    completionMode: 'link', clientStartedAt: 0,
   });
 });
 
