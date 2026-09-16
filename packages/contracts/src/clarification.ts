@@ -56,6 +56,7 @@ export const CLARIFICATION_DECISION_SCHEMA = {
   ],
 } as const;
 
+// JSON Schema cannot express lexical array ordering; code that trusts a signature must call verifyDecisionSignature.
 export const DECISION_SIGNATURE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -99,6 +100,34 @@ function isSortedUniqueStringArray(value: unknown): value is string[] {
   return value.every((item, index) => index === 0 || compareUnicodeCodePoints(value[index - 1]!, item) < 0);
 }
 
+function sortedUniqueUnicodeCodePointStrings(values: string[]): string[] {
+  return [...new Set(values)].sort(compareUnicodeCodePoints);
+}
+
+export function canonicalDecisionSignaturePayload(input: Omit<DecisionSignature, 'hash'>): string {
+  return JSON.stringify([
+    input.disposition,
+    input.faqId,
+    input.knowledgeVersion,
+    input.configVersion,
+    sortedUniqueUnicodeCodePointStrings(input.keyFacts),
+    sortedUniqueUnicodeCodePointStrings(input.evidenceIds),
+  ]);
+}
+
+export async function computeDecisionSignatureHash(input: Omit<DecisionSignature, 'hash'>): Promise<string> {
+  const payload = canonicalDecisionSignaturePayload(input);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function constantShapeEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  return difference === 0;
+}
+
 export function validateDecisionSignature(
   value: unknown,
 ): {success: true; data: DecisionSignature} | {success: false; errors: string[]} {
@@ -120,6 +149,19 @@ export function validateDecisionSignature(
   return errors.length > 0
     ? {success: false, errors}
     : {success: true, data: value as unknown as DecisionSignature};
+}
+
+export async function verifyDecisionSignature(
+  value: unknown,
+): Promise<{success: true; data: DecisionSignature} | {success: false; errors: string[]}> {
+  const structural = validateDecisionSignature(value);
+  if (!structural.success) return structural;
+
+  const {hash, ...input} = structural.data;
+  const expectedHash = await computeDecisionSignatureHash(input);
+  return constantShapeEqual(hash, expectedHash)
+    ? structural
+    : {success: false, errors: ['hash does not match canonical payload']};
 }
 
 export const TEACHER_TIMING_INPUT_SCHEMA = {

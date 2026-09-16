@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readdirSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import test from 'node:test';
@@ -7,6 +8,7 @@ import {
   ANSWER_RESPONSE_SCHEMA,
   ANSWER_TRACE_SCHEMA,
   API_ERROR_SCHEMA,
+  canonicalDecisionSignaturePayload,
   CLARIFICATION_DECISION_SCHEMA,
   CONVERSATION_SCHEMA,
   DECISION_SIGNATURE_SCHEMA,
@@ -26,6 +28,8 @@ import {
   type JobStatus,
   validateEvaluationDataset,
   validateDecisionSignature,
+  computeDecisionSignatureHash,
+  verifyDecisionSignature,
 } from '@campus/contracts';
 import {
   API_OPERATIONS,
@@ -127,18 +131,34 @@ test('四目标评测数据严格校验并拒绝不可判定样本', async () =>
   }
 });
 
-test('决策签名冻结 SHA-256、排序数组和严格字段', async () => {
-  const signature: DecisionSignature = {
+test('决策签名以规范化内容绑定 SHA-256、排序数组和严格字段', async () => {
+  const input: Omit<DecisionSignature, 'hash'> = {
     disposition: 'answer',
     faqId: 'exam-deferral',
     knowledgeVersion: 'kv-1',
     configVersion: 'mvp-1',
     keyFacts: ['申请截止时间', '课程名称'],
     evidenceIds: ['evidence-001', 'evidence-002'],
-    hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   };
+  const expectedPayload = JSON.stringify([
+    'answer', 'exam-deferral', 'kv-1', 'mvp-1', ['申请截止时间', '课程名称'], ['evidence-001', 'evidence-002'],
+  ]);
+  const oracleHash = createHash('sha256').update(expectedPayload, 'utf8').digest('hex');
+  const unorderedInput: Omit<DecisionSignature, 'hash'> = {
+    ...input,
+    keyFacts: ['课程名称', '申请截止时间'],
+    evidenceIds: ['evidence-002', 'evidence-001'],
+  };
+  const originalKeyFacts = [...unorderedInput.keyFacts];
+  const originalEvidenceIds = [...unorderedInput.evidenceIds];
+  const signature: DecisionSignature = {...input, hash: oracleHash};
 
+  assert.equal(canonicalDecisionSignaturePayload(unorderedInput), expectedPayload);
+  assert.deepEqual(unorderedInput.keyFacts, originalKeyFacts);
+  assert.deepEqual(unorderedInput.evidenceIds, originalEvidenceIds);
+  assert.equal(await computeDecisionSignatureHash(input), oracleHash);
   assert.equal(validateDecisionSignature(signature).success, true);
+  assert.equal((await verifyDecisionSignature(signature)).success, true);
   await assertStrictSchema(DECISION_SIGNATURE_SCHEMA, {...signature});
   const invalidSignatures: unknown[] = [
     (({hash: _, ...value}) => value)(signature),
@@ -151,6 +171,9 @@ test('决策签名冻结 SHA-256、排序数组和严格字段', async () => {
   for (const invalid of invalidSignatures) {
     assert.equal(validateDecisionSignature(invalid).success, false);
   }
+  const mismatchedHash = await verifyDecisionSignature({...signature, faqId: 'different-faq'});
+  assert.equal(mismatchedHash.success, false);
+  if (!mismatchedHash.success) assert.ok(mismatchedHash.errors.includes('hash does not match canonical payload'));
 });
 
 test('合成评测结果在类型层不得宣称完成或通过', () => {
