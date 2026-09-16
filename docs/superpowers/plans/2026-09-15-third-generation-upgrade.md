@@ -1,5 +1,7 @@
 # 教务小助手三代升级实施计划
 
+> **执行状态（2026-09-16）：** Tasks 1–4 作为已完成基础保留；Task 5–19 已从当前最小 MVP 移出并暂停执行。后续实施计划将以 `2026-09-16-four-outcome-mvp-design.md` 为唯一范围来源。本文保留为远期路线和历史记录，不能据此向当前 MVP 增加功能。
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** 在保持单机桌面部署和 v1.0.3 数据可升级的前提下，实现确定性可追溯问答、可恢复后台任务、多轮追问、待解答闭环、通知优化和教师任务工作台，并通过 20 条消息/秒峰值与全部 P0 门禁。
